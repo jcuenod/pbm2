@@ -1,0 +1,24 @@
+{
+  "name": "parabible-mobile",
+  "sources": [
+    {
+      "dir": "src",
+      "subdirs": true
+    }
+  ],
+  "package-specs": [
+    {
+      "module": "esmodule",
+      "in-source": true
+    }
+  ],
+  "suffix": ".res.mjs",
+  "jsx": {
+    "version": 4
+  },
+  "dependencies": [
+    "@rescript/react",
+    "rescript-webapi"
+  ],
+  "compiler-flags": []
+}

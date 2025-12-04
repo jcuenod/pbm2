@@ -1,0 +1,212 @@
+@react.component
+let make = (~isOpen, ~onClose, ~currentBook, ~currentChapter, ~onSelect) => {
+  let (searchText, setSearchText) = React.useState(() => "")
+  let (expandedBookId, setExpandedBookId) = React.useState(() => None)
+  let handlingEvent = React.useRef(false)
+
+  let filteredBooks = if searchText == "" {
+    BibleData.books
+  } else {
+    BibleData.books->Array.filter(book => {
+      let search = searchText->String.toLowerCase
+      book.name->String.toLowerCase->String.includes(search) ||
+      book.sbl->String.toLowerCase->String.includes(search)
+    })
+  }
+
+  let bookRows = BibleData.groupBooksByRow(filteredBooks)
+  
+  let withEventGuard = (callback, e) => {
+    if !handlingEvent.current {
+      handlingEvent.current = true
+      ReactEvent.Synthetic.stopPropagation(e)
+      callback()
+      let _ = setTimeout(() => handlingEvent.current = false, 300)
+    }
+  }
+
+  let handleBookClick = (bookId: string) => {
+    setExpandedBookId(current => 
+      switch current {
+      | Some(id) if id == bookId => None
+      | _ => Some(bookId)
+      }
+    )
+  }
+
+  let handleChapterClick = (book: BibleData.book, chapter: int) => {
+    onSelect(book, chapter)
+    onClose()
+  }
+
+  if !isOpen {
+    React.null
+  } else {
+    <div 
+      className={"fixed inset-0 z-50 bg-white dark:bg-stone-900 flex flex-col animate-slide-in"}>
+      // Header with search and close button
+      <div className="flex items-center gap-2 p-4 border-b border-stone-200 dark:border-stone-800">
+        <div className="flex-1 relative group">
+          <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
+            <svg className="w-5 h-5 text-stone-400 dark:text-stone-500 group-focus-within:text-teal-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+          </div>
+          <input
+            type_="text"
+            value={searchText}
+            onChange={e => setSearchText(ReactEvent.Form.target(e)["value"])}
+            placeholder="Search books..."
+            className="w-full pl-10 pr-4 py-2 border border-stone-300 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 focus:outline-none focus:border-teal-600 transition-colors"
+          />
+        </div>
+        <button
+          type_="button"
+          onClick={e => withEventGuard(onClose, e)}
+          onTouchEnd={e => withEventGuard(onClose, e)}
+          className="p-2 hover:bg-stone-100 dark:hover:bg-stone-800 rounded-lg transition-colors active:scale-95"
+          ariaLabel="Close">
+          <svg className="w-6 h-6 text-stone-500 dark:text-stone-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+      // Scrollable content area
+      <div className="flex-1 overflow-auto p-4">
+        {bookRows->Array.mapWithIndex((row, rowIndex) => {
+          let firstBook = row->Array.get(0)
+          
+          // Check if this is the first row of a major section - only NT and Apostolic Fathers
+          let isNewSection = switch firstBook {
+          | Some(book) => 
+              rowIndex > 0 && {
+                switch bookRows->Array.get(rowIndex - 1) {
+                | Some(prevRow) => 
+                    switch prevRow->Array.get(0) {
+                    | Some(prevBook) => {
+                        // Only add spacing when transitioning to NT or Apostolic Fathers
+                        prevBook.category != book.category && (
+                          book.category == Gospels ||
+                          book.category == ApostolicFathers
+                        )
+                      }
+                    | None => false
+                    }
+                | None => false
+                }
+              }
+          | None => false
+          }
+
+          <div key={rowIndex->Int.toString} className={isNewSection ? "mb-3 mt-6 border-t border-stone-200 dark:border-stone-800 pt-6" : "mb-3"}>
+            // Book buttons row
+            <div className="grid grid-cols-4 gap-2 items-start">
+              {row->Array.map(book => {
+                let underlineColor = switch book.category {
+                | Pentateuch => "border-amber-500"
+                | Historical => "border-cyan-500"
+                | Writings => "border-purple-500"
+                | Prophets => "border-emerald-500"
+                | Gospels => "border-blue-500"
+                | PaulineEpistles => "border-amber-500"
+                | GeneralEpistles => "border-violet-500"
+                | Revelation => "border-rose-500"
+                | ApostolicFathers => "border-stone-400"
+                }
+                let isExpanded = switch expandedBookId {
+                | Some(id) => id == book.id
+                | None => false
+                }
+                let isCurrentBook = currentBook == book.id
+                <button
+                  type_="button"
+                  key={book.id}
+                  onClick={e => withEventGuard(() => handleBookClick(book.id), e)}
+                  onTouchEnd={e => withEventGuard(() => handleBookClick(book.id), e)}
+                  className={
+                    "relative bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-900 dark:text-stone-100 " ++
+                    "px-3 font-semibold text-sm transition-all duration-200 active:scale-95 " ++
+                    (isExpanded ? "pt-2 pb-6 z-10" : "py-2") ++
+                    (isCurrentBook ? " bg-stone-200 dark:bg-stone-700" : "")
+                  }>
+                  <div className="flex flex-col items-center">
+                    <div className={isExpanded ? "py-0.5" : "py-0.5"}>
+                      {React.string(book.sbl)}
+                    </div>
+                    <div className={"w-full border-b-2 " ++ underlineColor ++ (isExpanded ? " absolute bottom-0 left-0" : "")} />
+                  </div>
+                  {isCurrentBook ? <div className="absolute top-1 right-1 w-1.5 h-1.5 bg-teal-600 rounded-full" /> : React.null}
+                </button>
+              })->React.array}
+            </div>
+
+            // Chapter buttons (expanded)
+            {row->Array.map(book => {
+              switch expandedBookId {
+              | Some(id) if id == book.id => 
+                  <div 
+                    key={book.id ++ "-chapters"} 
+                    className="grid gap-2 px-3 py-3 border-t-0 overflow-hidden animate-slide-down bg-stone-100 dark:bg-stone-800"
+                    style={
+                      gridTemplateColumns: "repeat(auto-fit, minmax(3rem, 1fr))"
+                    }>
+                    {Array.fromInitializer(~length=book.chapters, i => i + 1)->Array.map(chapter => {
+                      let isSelected = currentBook == book.id && currentChapter == chapter
+                      <button
+                        type_="button"
+                        key={chapter->Int.toString}
+                        onClick={e => withEventGuard(() => handleChapterClick(book, chapter), e)}
+                        onTouchEnd={e => withEventGuard(() => handleChapterClick(book, chapter), e)}
+                        className={
+                          (isSelected 
+                            ? "bg-teal-600 text-white scale-105" 
+                            : "bg-white dark:bg-stone-700 text-stone-700 dark:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-600") ++
+                          " h-12 text-sm font-medium transition-all duration-200 flex items-center justify-center active:scale-95"
+                        }>
+                        {React.string(chapter->Int.toString)}
+                      </button>
+                    })->React.array}
+                  </div>
+              | _ => React.null
+              }
+            })->React.array}
+          </div>
+        })->React.array}
+      </div>
+
+      <style>
+        {React.string(`
+          @keyframes slideIn {
+            from {
+              transform: translateY(100%);
+              opacity: 0;
+            }
+            to {
+              transform: translateY(0);
+              opacity: 1;
+            }
+          }
+          @keyframes slideDown {
+            from {
+              opacity: 0;
+              max-height: 0;
+              transform: translateY(-10px);
+            }
+            to {
+              opacity: 1;
+              max-height: 1000px;
+              transform: translateY(0);
+            }
+          }
+          .animate-slide-in {
+            animation: slideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+          }
+          .animate-slide-down {
+            animation: slideDown 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+          }
+        `)}
+      </style>
+    </div>
+  }
+}
