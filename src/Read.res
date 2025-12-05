@@ -6,11 +6,10 @@ type chapterData = {
   data: ParabibleApi.textEndpointResult,
 }
 
-type loadedChapters = {
-  previous: option<chapterData>,
-  current: option<chapterData>,
-  next: option<chapterData>,
-}
+
+
+@module("react")
+external useLayoutEffect1: (unit => option<unit => unit>, 'a) => unit = "useLayoutEffect"
 
 @react.component
 let make = (~selectedModuleIds, ~availableModules, ~onWordClick: (int, int) => unit, ~selectedWord: option<(int, int)>) => {
@@ -18,11 +17,9 @@ let make = (~selectedModuleIds, ~availableModules, ~onWordClick: (int, int) => u
   let (showSelector, setShowSelector) = React.useState(() => false)
   let (currentBook, setCurrentBook) = React.useState(() => "Matt")
   let (currentChapter, setCurrentChapter) = React.useState(() => 1)
-  let (loadedChapters, setLoadedChapters) = React.useState(() => {
-    previous: None,
-    current: None,
-    next: None,
-  })
+  
+  let (chapters, setChapters) = React.useState(() => [])
+  
   let (loading, setLoading) = React.useState(() => false)
   let (error, setError) = React.useState(() => None)
   let (loadingPrev, setLoadingPrev) = React.useState(() => false)
@@ -32,8 +29,26 @@ let make = (~selectedModuleIds, ~availableModules, ~onWordClick: (int, int) => u
   let (visibleChapter, setVisibleChapter) = React.useState(() => 1)
   let lastY = React.useRef(0)
   let scrollContainerRef = React.useRef(Nullable.null)
-  let previousScrollHeight = React.useRef(0)
-  let isInitialPreload = React.useRef(false)
+  
+  // Refs to avoid stale closures in onScroll
+  let chaptersRef = React.useRef([])
+  let loadingPrevRef = React.useRef(false)
+  let loadingNextRef = React.useRef(false)
+  
+  React.useEffect1(() => {
+    chaptersRef.current = chapters
+    None
+  }, [chapters])
+  
+  React.useEffect1(() => {
+    loadingPrevRef.current = loadingPrev
+    None
+  }, [loadingPrev])
+  
+  React.useEffect1(() => {
+    loadingNextRef.current = loadingNext
+    None
+  }, [loadingNext])
 
   let maxChaptersForBook = React.useMemo1(() => {
     BibleData.books
@@ -59,31 +74,27 @@ let make = (~selectedModuleIds, ~availableModules, ~onWordClick: (int, int) => u
     let dy = st - lastY.current
     lastY.current = st
     if dy > 5 {
-      // scrolling down
       setCollapsed(_ => true)
     } else if dy < -5 {
-      // scrolling up
       setCollapsed(_ => false)
     }
     
-    // Update visible chapter based on which chapter heading is at or above the top of viewport
     let target = e->JsxEvent.UI.target
     let container = target->Obj.magic
     
-    // Get all chapter section elements and find which one's heading is at the top
+    // Update visible chapter
     let containerElement: {..} = container
     let chapterSections = containerElement["querySelectorAll"](".chapter-section")
     let sectionsArray: array<{..}> = chapterSections
     
-    // Find the last chapter whose heading is at or above the viewport top
     let visibleChapterNum = ref(visibleChapter)
     sectionsArray->Array.forEach(section => {
       let heading = section["querySelector"](".chapter-heading")
       if heading !== Nullable.null->Obj.magic {
         let rect = heading["getBoundingClientRect"]()
-        // If the heading is at or above the top of the viewport (with small buffer for header)
-        if rect["top"] <= 60. {
-          // Extract chapter number from id (format: "chapter-N")
+        // Threshold needs to be > 64 (header 48 + padding 16) to catch the first chapter at the top
+        // Increased to 150 to account for potential margins and ensure we catch the chapter even if it's pushed down slightly
+        if rect["top"] <= 150. {
           let sectionId = section["id"]
           let chapterStr = sectionId->String.replace("chapter-", "")
           switch chapterStr->Int.fromString {
@@ -95,104 +106,74 @@ let make = (~selectedModuleIds, ~availableModules, ~onWordClick: (int, int) => u
     })
     setVisibleChapter(_ => visibleChapterNum.contents)
 
-    // Check scroll position for infinite scroll
-    let target = e->JsxEvent.UI.target
+    // Infinite scroll
     let scrollTop = target["scrollTop"]
     let scrollHeight = target["scrollHeight"]
     let clientHeight = target["clientHeight"]
     
-    // Determine the lowest loaded chapter number
-    let lowestLoadedChapter = switch loadedChapters.previous {
-    | Some(prev) => prev.chapter
-    | None => switch loadedChapters.current {
-      | Some(curr) => curr.chapter
-      | None => currentChapter
-      }
-    }
+    let currentChapters = chaptersRef.current
     
-    // Determine the highest loaded chapter number
-    let highestLoadedChapter = switch loadedChapters.next {
-    | Some(next) => next.chapter
-    | None => switch loadedChapters.current {
-      | Some(curr) => curr.chapter
-      | None => currentChapter
-      }
-    }
-    
-    // Load previous chapter if scrolling near top
-    if scrollTop < 200 && !loadingPrev && lowestLoadedChapter > 1 {
-      switch loadedChapters.previous {
-      | None => 
-          setLoadingPrev(_ => true)
-          // Save current scroll height before loading
-          previousScrollHeight.current = scrollHeight
+    if currentChapters->Array.length > 0 {
+      switch (currentChapters[0], currentChapters[currentChapters->Array.length - 1]) {
+      | (Some(firstChapter), Some(lastChapter)) => {
+          // Load previous
+          if scrollTop < 2000 && !loadingPrevRef.current && !prevLoadFailed && firstChapter.chapter > 1 {
+            setLoadingPrev(_ => true)
+            loadingPrevRef.current = true
+            
+            let prevChapter = firstChapter.chapter - 1
+            let fetchData = async () => {
+              let result = await fetchChapterData(currentBook, prevChapter)
+              switch result {
+              | Ok(data) => {
+                  setChapters(prev => {
+                    if prev->Array.some(c => c.chapter == prevChapter) {
+                      prev
+                    } else {
+                      Array.concat([{chapter: prevChapter, data: data}], prev)
+                    }
+                  })
+                  setLoadingPrev(_ => false)
+                  setPrevLoadFailed(_ => false)
+                }
+              | Error(_) => {
+                  setLoadingPrev(_ => false)
+                  setPrevLoadFailed(_ => true)
+                }
+              }
+            }
+            let _ = fetchData()
+          }
           
-          let prevChapter = lowestLoadedChapter - 1
-          let fetchData = async () => {
-            let result = await fetchChapterData(currentBook, prevChapter)
-            switch result {
-            | Ok(data) => {
-                setLoadedChapters(prev => {
-                  previous: Some({chapter: prevChapter, data: data}),
-                  current: prev.current,
-                  next: prev.next,
-                })
-                setLoadingPrev(_ => false)
-                setPrevLoadFailed(_ => false)
-              }
-            | Error(_) => {
-                setLoadingPrev(_ => false)
-                setPrevLoadFailed(_ => true)
-              }
-            }
-          }
-          let _ = fetchData()
-      | Some(_prevData) => 
-          // If previous chapter is already loaded and we're at top, shift chapters backward
-          if scrollTop < 100 {
-            setLoadedChapters(prev => {
-              previous: None,
-              current: prev.previous,
-              next: prev.current,
-            })
-          }
-      }
-    }
-    
-    // Load next chapter if scrolling near bottom
-    if scrollTop + clientHeight > scrollHeight - 200 && !loadingNext && highestLoadedChapter < maxChaptersForBook {
-      switch loadedChapters.next {
-      | None => 
-          setLoadingNext(_ => true)
-          let nextChapter = highestLoadedChapter + 1
-          let fetchData = async () => {
-            let result = await fetchChapterData(currentBook, nextChapter)
-            switch result {
-            | Ok(data) => {
-                setLoadedChapters(prev => {
-                  previous: prev.previous,
-                  current: prev.current,
-                  next: Some({chapter: nextChapter, data: data}),
-                })
-                setLoadingNext(_ => false)
-                setNextLoadFailed(_ => false)
-              }
-            | Error(_) => {
-                setLoadingNext(_ => false)
-                setNextLoadFailed(_ => true)
+          // Load next
+          if scrollTop + clientHeight > scrollHeight - 2000 && !loadingNextRef.current && !nextLoadFailed && lastChapter.chapter < maxChaptersForBook {
+            setLoadingNext(_ => true)
+            loadingNextRef.current = true
+            let nextChapter = lastChapter.chapter + 1
+            let fetchData = async () => {
+              let result = await fetchChapterData(currentBook, nextChapter)
+              switch result {
+              | Ok(data) => {
+                  setChapters(prev => {
+                    if prev->Array.some(c => c.chapter == nextChapter) {
+                      prev
+                    } else {
+                      Array.concat(prev, [{chapter: nextChapter, data: data}])
+                    }
+                  })
+                  setLoadingNext(_ => false)
+                  setNextLoadFailed(_ => false)
+                }
+              | Error(_) => {
+                  setLoadingNext(_ => false)
+                  setNextLoadFailed(_ => true)
+                }
               }
             }
+            let _ = fetchData()
           }
-          let _ = fetchData()
-      | Some(_nextData) => 
-          // If next chapter is already loaded and we're at bottom, shift chapters forward
-          if scrollTop + clientHeight > scrollHeight - 100 {
-            setLoadedChapters(prev => {
-              previous: prev.current,
-              current: prev.next,
-              next: None,
-            })
-          }
+        }
+      | _ => ()
       }
     }
   }
@@ -210,6 +191,7 @@ let make = (~selectedModuleIds, ~availableModules, ~onWordClick: (int, int) => u
     setCurrentChapter(_ => chapter)
     setPrevLoadFailed(_ => false)
     setNextLoadFailed(_ => false)
+    setChapters(_ => [])
   }
 
   let renderChapterContent = (chapterNum: int, data: ParabibleApi.textEndpointResult) => {
@@ -247,7 +229,6 @@ let make = (~selectedModuleIds, ~availableModules, ~onWordClick: (int, int) => u
               let moduleId = moduleIdStr->Int.fromString->Option.getOr(0)
               let matchForModule = verseGroup->Array.find(m => m.moduleId == moduleId)
               
-              // Calculate verse number for this module
               let verseDisplay = switch matchForModule {
               | Some(match) => {
                   let verse = match.rid % 1000
@@ -256,13 +237,11 @@ let make = (~selectedModuleIds, ~availableModules, ~onWordClick: (int, int) => u
               | None => ""
               }
               
-              // Get module abbreviation for styling
               let moduleAbbrev = availableModules
                 ->Array.find(m => m.ParabibleApi.moduleId == moduleId)
                 ->Option.map(m => m.ParabibleApi.abbreviation)
                 ->Option.getOr("")
               
-              // Determine styling based on module abbreviation
               let (isRtl, fontClass, sizeClass) = switch moduleAbbrev {
               | "BHSA" => (true, "font-['SBL_BibLit']", "text-2xl")
               | "APF" | "LXXR" | "NA1904" => (false, "font-['SBL_BibLit']", "text-lg")
@@ -331,43 +310,51 @@ let make = (~selectedModuleIds, ~availableModules, ~onWordClick: (int, int) => u
     </div>
   }
 
-  // Fetch chapter text when book, chapter, or modules change
   React.useEffect4(() => {
-    // Only fetch if we have modules selected and available modules loaded
     if selectedModuleIds->Array.length > 0 && availableModules->Array.length > 0 {
       setLoading(_ => true)
       setError(_ => None)
       setVisibleChapter(_ => currentChapter)
+      setChapters(_ => [])
       
       let fetchData = async () => {
         let result = await fetchChapterData(currentBook, currentChapter)
         switch result {
         | Ok(data) => {
-            setLoadedChapters(_ => {
-              previous: None,
-              current: Some({chapter: currentChapter, data: data}),
-              next: None,
-            })
+            setChapters(_ => [{chapter: currentChapter, data: data}])
             setLoading(_ => false)
             
-            // Preload previous chapter if not on chapter 1
+            if currentChapter < maxChaptersForBook {
+               let nextResult = await fetchChapterData(currentBook, currentChapter + 1)
+               switch nextResult {
+               | Ok(nextData) => 
+                   setChapters(prev => {
+                     if prev->Array.some(c => c.chapter == currentChapter + 1) {
+                       prev
+                     } else {
+                       Array.concat(prev, [{chapter: currentChapter + 1, data: nextData}])
+                     }
+                   })
+               | _ => ()
+               }
+            }
+
             if currentChapter > 1 {
-              isInitialPreload.current = true
-              setLoadingPrev(_ => true)
-              let prevResult = await fetchChapterData(currentBook, currentChapter - 1)
-              switch prevResult {
-              | Ok(prevData) => {
-                  setLoadedChapters(prev => {
-                    previous: Some({chapter: currentChapter - 1, data: prevData}),
-                    current: prev.current,
-                    next: prev.next,
-                  })
-                  setLoadingPrev(_ => false)
-                  setPrevLoadFailed(_ => false)
-                  
-                  // Scroll to current chapter after preload
-                  let _ = Promise.make((resolve, _reject) => {
-                    let _ = setTimeout(() => {
+               let prevResult = await fetchChapterData(currentBook, currentChapter - 1)
+               switch prevResult {
+               | Ok(prevData) => {
+                   setChapters(prev => {
+                     if prev->Array.some(c => c.chapter == currentChapter - 1) {
+                       prev
+                     } else {
+                       Array.concat([{chapter: currentChapter - 1, data: prevData}], prev)
+                     }
+                   })
+                   
+                   // Adjust scroll to keep current chapter in view
+                   // We need to do this after render, but since we can't easily use useLayoutEffect with async data in this structure
+                   // we rely on the fact that this is the initial load and we can scroll to the specific element
+                   let _ = setTimeout(() => {
                       switch scrollContainerRef.current->Nullable.toOption {
                       | Some(container) => {
                           let element = container->Obj.magic
@@ -376,18 +363,13 @@ let make = (~selectedModuleIds, ~availableModules, ~onWordClick: (int, int) => u
                           if chapterElement !== Nullable.null->Obj.magic {
                             chapterElement["scrollIntoView"]({"behavior": "instant", "block": "start"})
                           }
-                          resolve()
                         }
-                      | None => resolve()
+                      | None => ()
                       }
-                    }, 0)
-                  })
-                }
-              | Error(_) => {
-                  setLoadingPrev(_ => false)
-                  setPrevLoadFailed(_ => true)
-                }
-              }
+                   }, 0)
+                 }
+               | _ => ()
+               }
             }
           }
         | Error(err) => {
@@ -396,37 +378,12 @@ let make = (~selectedModuleIds, ~availableModules, ~onWordClick: (int, int) => u
           }
         }
       }
-      
       let _ = fetchData()
     }
     None
   }, (currentBook, currentChapter, selectedModuleIds, availableModules))
 
-  // Restore scroll position after loading previous chapter
-  React.useEffect1(() => {
-    switch scrollContainerRef.current->Nullable.toOption {
-    | Some(container) => {
-        let element = container->Obj.magic
-        let currentScrollHeight = element["scrollHeight"]
-        let oldHeight = previousScrollHeight.current
-        
-        // Only adjust scroll if this was a user-initiated load (not initial preload)
-        if !isInitialPreload.current && oldHeight > 0 && currentScrollHeight > oldHeight {
-          // Content was added at the top, adjust scroll position
-          let heightDifference = currentScrollHeight - oldHeight
-          element["scrollTop"] = element["scrollTop"] + heightDifference
-          previousScrollHeight.current = 0
-        }
-        
-        // Clear the initial preload flag after first render with previous chapter
-        if isInitialPreload.current {
-          isInitialPreload.current = false
-        }
-      }
-    | None => ()
-    }
-    None
-  }, [loadedChapters.previous])
+
 
   let reference = {
     let bookName = BibleData.books
@@ -449,43 +406,38 @@ let make = (~selectedModuleIds, ~availableModules, ~onWordClick: (int, int) => u
       ref={scrollContainerRef->Obj.magic}
       onScroll={onScroll} 
       className="overflow-auto p-4 prose max-w-none h-full scrollbar-hide"
+      style={ReactDOMStyle._dictToStyle(Dict.fromArray([("overflowAnchor", "auto")]))}
     >
-      {switch (loading, error, loadedChapters.current) {
-      | (true, _, _) => <div className="text-center py-8"> {React.string("Loading...")} </div>
+      {switch (loading, error, chapters->Array.length > 0) {
+      | (true, _, false) => <div className="text-center py-8"> {React.string("Loading...")} </div>
       | (_, Some(err), _) => 
           <div className="text-center py-8 text-red-600 dark:text-red-400"> 
             {React.string(`Error: ${err}`)} 
           </div>
-      | (false, None, Some(currentData)) => 
+      | (false, None, true) => 
           <React.Fragment>
-            // Top overscroll indicator
-            {switch (loadedChapters.previous, loadingPrev, prevLoadFailed) {
-            | (None, true, _) => 
-                <div className="text-center py-4 text-gray-500 flex items-center justify-center gap-2">
+            {switch (loadingPrev, prevLoadFailed) {
+            | (true, _) => 
+                <div className="text-center py-4 text-gray-500 flex items-center justify-center gap-2" style={{minHeight: "100vh"}}>
                   <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 814 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
                   {React.string("Loading previous chapter...")}
                 </div>
-            | (None, false, true) => 
+            | (false, true) => 
                 <div className="text-center py-4 text-orange-500 dark:text-orange-400">
                   {React.string("⚠ Could not load previous chapter")}
                 </div>
             | _ => React.null
             }}
-            {switch loadedChapters.previous {
-            | Some(prevData) => renderChapterContent(prevData.chapter, prevData.data)
-            | None => React.null
-            }}
-            {renderChapterContent(currentData.chapter, currentData.data)}
-            {switch loadedChapters.next {
-            | Some(nextData) => renderChapterContent(nextData.chapter, nextData.data)
-            | None => React.null
-            }}
-            // Bottom overscroll indicator
-            {switch (loadedChapters.next, loadingNext, nextLoadFailed, currentData.chapter >= maxChaptersForBook) {
-            | (None, true, _, _) => 
+            
+            {chapters->Array.map(chapter => {
+              renderChapterContent(chapter.chapter, chapter.data)
+            })->React.array}
+            
+            {switch (loadingNext, nextLoadFailed, chapters[chapters->Array.length - 1]) {
+            | (true, _, _) => 
                 <div className="text-center py-4 text-gray-500 flex items-center justify-center gap-2">
                   <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
@@ -493,11 +445,11 @@ let make = (~selectedModuleIds, ~availableModules, ~onWordClick: (int, int) => u
                   </svg>
                   {React.string("Loading next chapter...")}
                 </div>
-            | (None, false, true, _) => 
+            | (false, true, _) => 
                 <div className="text-center py-4 text-orange-500 dark:text-orange-400">
                   {React.string("⚠ Failed to load next chapter")}
                 </div>
-            | (None, false, false, true) => 
+            | (false, false, Some(last)) if last.chapter >= maxChaptersForBook => 
                 <div className="text-center py-4 text-gray-400 dark:text-gray-600 text-sm">
                   {React.string("⬇ End of book")}
                 </div>
