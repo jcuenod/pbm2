@@ -249,7 +249,7 @@ let make = (~selectedWord: option<(int, int)>, ~onAddSearchTerms: (array<Parabib
                   }}
                 >
                   <div className="font-semibold text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">
-                    {React.string(attr.key)}
+                    {String.replaceAll(attr.key, "_", " ")->React.string}
                   </div>
                   <div className="mt-1 text-gray-900 dark:text-gray-100">
                     {React.string(attr.value)}
@@ -260,7 +260,7 @@ let make = (~selectedWord: option<(int, int)>, ~onAddSearchTerms: (array<Parabib
           </div>
           
           // FAB Button
-          <div className="fab-container fixed bottom-[1.5rem] right-6 flex flex-col items-end gap-0">
+          <div className="fab-container fixed bottom-[1rem] right-6 flex flex-col items-end gap-0">
               // Backdrop overlay when menu is open
               {showMenu ? <div 
                 className="fixed inset-0 z-10"
