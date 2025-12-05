@@ -1,5 +1,14 @@
+// Get the base URL from Vite's environment
+const BASE_URL = import.meta.env.BASE_URL || '/'
+
 export function getPath() {
-  return typeof window !== 'undefined' ? window.location.pathname : '/r/'
+  if (typeof window === 'undefined') return '/r/'
+  const pathname = window.location.pathname
+  // Strip the base URL from the pathname
+  if (pathname.startsWith(BASE_URL)) {
+    return pathname.slice(BASE_URL.length - 1) // Keep the leading slash
+  }
+  return pathname
 }
 
 export function getLocalStorage(key) {
@@ -14,7 +23,9 @@ export function setLocalStorage(key, value) {
 
 export function replaceHistory(path) {
   if (typeof history !== 'undefined' && history.replaceState) {
-    history.replaceState(null, '', path)
+    // Prepend the base URL to the path
+    const fullPath = BASE_URL === '/' ? path : BASE_URL.slice(0, -1) + path
+    history.replaceState(null, '', fullPath)
   }
 }
 
