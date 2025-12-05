@@ -34,6 +34,7 @@ let make = (~selectedModuleIds, ~availableModules, ~onWordClick: (int, int) => u
   let chaptersRef = React.useRef([])
   let loadingPrevRef = React.useRef(false)
   let loadingNextRef = React.useRef(false)
+  let currentBookRef = React.useRef(currentBook)
   
   React.useEffect1(() => {
     chaptersRef.current = chapters
@@ -41,6 +42,11 @@ let make = (~selectedModuleIds, ~availableModules, ~onWordClick: (int, int) => u
     setLoadingNext(_ => false)
     None
   }, [chapters])
+
+  React.useEffect1(() => {
+    currentBookRef.current = currentBook
+    None
+  }, [currentBook])
   
   React.useEffect1(() => {
     loadingPrevRef.current = loadingPrev
@@ -133,24 +139,29 @@ let make = (~selectedModuleIds, ~availableModules, ~onWordClick: (int, int) => u
             loadingPrevRef.current = true
             
             let prevChapter = firstChapter.chapter - 1
+            let bookAtStart = currentBookRef.current
             let fetchData = async () => {
               let result = await fetchChapterData(currentBook, prevChapter)
-              switch result {
-              | Ok(data) => {
-                  setChapters(prev => {
-                    if prev->Array.some(c => c.chapter == prevChapter) {
-                      prev
-                    } else {
-                      Array.concat([{chapter: prevChapter, data: data}], prev)
-                    }
-                  })
-                  // Loading state is cleared in useEffect when chapters update
-                  setPrevLoadFailed(_ => false)
+              if bookAtStart == currentBookRef.current {
+                switch result {
+                | Ok(data) => {
+                    setChapters(prev => {
+                      if prev->Array.some(c => c.chapter == prevChapter) {
+                        prev
+                      } else {
+                        Array.concat([{chapter: prevChapter, data: data}], prev)
+                      }
+                    })
+                    // Loading state is cleared in useEffect when chapters update
+                    setPrevLoadFailed(_ => false)
+                  }
+                | Error(_) => {
+                    setLoadingPrev(_ => false)
+                    setPrevLoadFailed(_ => true)
+                  }
                 }
-              | Error(_) => {
-                  setLoadingPrev(_ => false)
-                  setPrevLoadFailed(_ => true)
-                }
+              } else {
+                setLoadingPrev(_ => false)
               }
             }
             let _ = fetchData()
@@ -161,24 +172,29 @@ let make = (~selectedModuleIds, ~availableModules, ~onWordClick: (int, int) => u
             setLoadingNext(_ => true)
             loadingNextRef.current = true
             let nextChapter = lastChapter.chapter + 1
+            let bookAtStart = currentBookRef.current
             let fetchData = async () => {
               let result = await fetchChapterData(currentBook, nextChapter)
-              switch result {
-              | Ok(data) => {
-                  setChapters(prev => {
-                    if prev->Array.some(c => c.chapter == nextChapter) {
-                      prev
-                    } else {
-                      Array.concat(prev, [{chapter: nextChapter, data: data}])
-                    }
-                  })
-                  // Loading state is cleared in useEffect when chapters update
-                  setNextLoadFailed(_ => false)
+              if bookAtStart == currentBookRef.current {
+                switch result {
+                | Ok(data) => {
+                    setChapters(prev => {
+                      if prev->Array.some(c => c.chapter == nextChapter) {
+                        prev
+                      } else {
+                        Array.concat(prev, [{chapter: nextChapter, data: data}])
+                      }
+                    })
+                    // Loading state is cleared in useEffect when chapters update
+                    setNextLoadFailed(_ => false)
+                  }
+                | Error(_) => {
+                    setLoadingNext(_ => false)
+                    setNextLoadFailed(_ => true)
+                  }
                 }
-              | Error(_) => {
-                  setLoadingNext(_ => false)
-                  setNextLoadFailed(_ => true)
-                }
+              } else {
+                setLoadingNext(_ => false)
               }
             }
             let _ = fetchData()
@@ -225,6 +241,9 @@ let make = (~selectedModuleIds, ~availableModules, ~onWordClick: (int, int) => u
     let activeModuleIds = hasContent->Dict.keysToArray
     let chapterId = `chapter-${chapterNum->Int.toString}`
     
+    // Base module ID is the first selected module
+    let baseModuleId = selectedModuleIds[0]->Option.getOr(0)
+
     <div 
       key={chapterNum->Int.toString} 
       id={chapterId}
@@ -234,86 +253,28 @@ let make = (~selectedModuleIds, ~availableModules, ~onWordClick: (int, int) => u
         <div className="text-lg font-semibold text-gray-400 dark:text-gray-400 text-center">{React.string(`Chapter ${chapterNum->Int.toString}`)}</div>
       </div>
       {data->Array.mapWithIndex((verseGroup, idx) => {
+        let baseMatch = verseGroup->Array.find(m => m.moduleId == baseModuleId)
+
         <div key={`${chapterNum->Int.toString}-${idx->Int.toString}`} className="mb-6 border-b border-gray-200 dark:border-stone-700 pb-4">
           <div className="grid gap-4" style={{gridTemplateColumns: `repeat(${activeModuleIds->Array.length->Int.toString}, minmax(0, 1fr))`}}>
             {activeModuleIds->Array.map(moduleIdStr => {
               let moduleId = moduleIdStr->Int.fromString->Option.getOr(0)
               let matchForModule = verseGroup->Array.find(m => m.moduleId == moduleId)
               
-              let verseDisplay = switch matchForModule {
-              | Some(match) => {
-                  let verse = match.rid % 1000
-                  verse->Int.toString
-                }
-              | None => ""
-              }
-              
               let moduleAbbrev = availableModules
                 ->Array.find(m => m.ParabibleApi.moduleId == moduleId)
                 ->Option.map(m => m.ParabibleApi.abbreviation)
                 ->Option.getOr("")
               
-              let (isRtl, fontClass, sizeClass) = switch moduleAbbrev {
-              | "BHSA" => (true, "font-['SBL_BibLit']", "text-2xl")
-              | "APF" | "LXXR" | "NA1904" => (false, "font-['SBL_BibLit']", "text-lg")
-              | _ => (false, "", "text-md")
-              }
-              
-              let dirClass = isRtl ? " rtl" : ""
-              let columnClass = `min-w-0${dirClass} ${fontClass}`
-              
-              <div key={moduleIdStr} className={columnClass}>
-                <span className="text-orange-500 dark:text-orange-400 font-bold mb-1 -top-1 relative pe-1 font-sans" style={ReactDOMStyle._dictToStyle({fontSize: "12px"})}>
-                  {React.string(verseDisplay)}
-                </span>
-                {switch matchForModule {
-                | Some(match) =>
-                    <span className="mb-2">
-                      {switch match.type_ {
-                      | "html" => 
-                          switch match.html {
-                          | Some(htmlContent) => 
-                              <span dangerouslySetInnerHTML={"__html": htmlContent} className={sizeClass} />
-                          | None => React.null
-                          }
-                      | "wordArray" =>
-                          switch match.wordArray {
-                          | Some(words) =>
-                              <span className={sizeClass}>
-                                {words->Array.map(word => {
-                                  let isSelected = switch selectedWord {
-                                  | Some((selectedWid, selectedModuleId)) => 
-                                      word.wid == selectedWid && moduleId == selectedModuleId
-                                  | None => false
-                                  }
-                                  let highlightClass = isSelected 
-                                    ? " text-blue-600 dark:text-blue-400" 
-                                    : ""
-                                  <React.Fragment key={word.wid->Int.toString}>{
-                                    switch word.leader {
-                                    | Some(leader) => React.string(leader)
-                                    | None => React.null
-                                    }}<span
-                                      className={"cursor-pointer hover:text-blue-500 dark:hover:text-blue-300" ++ highlightClass}
-                                      onClick={_ => onWordClick(word.wid, moduleId)}
-                                    >{React.string(word.text)}</span>{
-                                    switch word.trailer {
-                                    | Some(trailer) => React.string(trailer)
-                                    | None => React.string(" ")
-                                    }}</React.Fragment>
-                                })->React.array}
-                              </span>
-                          | None => React.null
-                          }
-                      | _ => React.null
-                      }}
-                    </span>
-                | None => 
-                    <div className="text-gray-400 dark:text-stone-600 text-sm italic">
-                      {React.string("—")}
-                    </div>
-                }}
-              </div>
+              <VerseColumn 
+                key={moduleIdStr}
+                match={matchForModule}
+                baseMatch={baseMatch}
+                moduleId={moduleId}
+                moduleAbbrev={moduleAbbrev}
+                selectedWord={selectedWord}
+                onWordClick={onWordClick}
+              />
             })->React.array}
           </div>
         </div>
@@ -322,6 +283,7 @@ let make = (~selectedModuleIds, ~availableModules, ~onWordClick: (int, int) => u
   }
 
   React.useEffect4(() => {
+    let cancelled = ref(false)
     if selectedModuleIds->Array.length > 0 && availableModules->Array.length > 0 {
       setLoading(_ => true)
       setError(_ => None)
@@ -330,68 +292,76 @@ let make = (~selectedModuleIds, ~availableModules, ~onWordClick: (int, int) => u
       
       let fetchData = async () => {
         let result = await fetchChapterData(currentBook, currentChapter)
-        switch result {
-        | Ok(data) => {
-            setChapters(_ => [{chapter: currentChapter, data: data}])
-            setLoading(_ => false)
-            
-            if currentChapter < maxChaptersForBook {
-               let nextResult = await fetchChapterData(currentBook, currentChapter + 1)
-               switch nextResult {
-               | Ok(nextData) => 
-                   setChapters(prev => {
-                     if prev->Array.some(c => c.chapter == currentChapter + 1) {
-                       prev
-                     } else {
-                       Array.concat(prev, [{chapter: currentChapter + 1, data: nextData}])
-                     }
-                   })
-               | _ => ()
-               }
-            }
-
-            if currentChapter > 1 {
-               let prevResult = await fetchChapterData(currentBook, currentChapter - 1)
-               switch prevResult {
-               | Ok(prevData) => {
-                   setChapters(prev => {
-                     if prev->Array.some(c => c.chapter == currentChapter - 1) {
-                       prev
-                     } else {
-                       Array.concat([{chapter: currentChapter - 1, data: prevData}], prev)
-                     }
-                   })
-                   
-                   // Adjust scroll to keep current chapter in view
-                   // We need to do this after render, but since we can't easily use useLayoutEffect with async data in this structure
-                   // we rely on the fact that this is the initial load and we can scroll to the specific element
-                   let _ = setTimeout(() => {
-                      switch scrollContainerRef.current->Nullable.toOption {
-                      | Some(container) => {
-                          let element = container->Obj.magic
-                          let chapterId = `chapter-${currentChapter->Int.toString}`
-                          let chapterElement = element["querySelector"](`#${chapterId}`)
-                          if chapterElement !== Nullable.null->Obj.magic {
-                            chapterElement["scrollIntoView"]({"behavior": "instant", "block": "start"})
-                          }
-                        }
-                      | None => ()
-                      }
-                   }, 0)
+        if !cancelled.contents {
+          switch result {
+          | Ok(data) => {
+              setChapters(_ => [{chapter: currentChapter, data: data}])
+              setLoading(_ => false)
+              
+              if currentChapter < maxChaptersForBook {
+                 let nextResult = await fetchChapterData(currentBook, currentChapter + 1)
+                 if !cancelled.contents {
+                   switch nextResult {
+                   | Ok(nextData) => 
+                       setChapters(prev => {
+                         if prev->Array.some(c => c.chapter == currentChapter + 1) {
+                           prev
+                         } else {
+                           Array.concat(prev, [{chapter: currentChapter + 1, data: nextData}])
+                         }
+                       })
+                   | _ => ()
+                   }
                  }
-               | _ => ()
-               }
+              }
+
+              if currentChapter > 1 {
+                 let prevResult = await fetchChapterData(currentBook, currentChapter - 1)
+                 if !cancelled.contents {
+                   switch prevResult {
+                   | Ok(prevData) => {
+                       setChapters(prev => {
+                         if prev->Array.some(c => c.chapter == currentChapter - 1) {
+                           prev
+                         } else {
+                           Array.concat([{chapter: currentChapter - 1, data: prevData}], prev)
+                         }
+                       })
+                       
+                       // Adjust scroll to keep current chapter in view
+                       // We need to do this after render, but since we can't easily use useLayoutEffect with async data in this structure
+                       // we rely on the fact that this is the initial load and we can scroll to the specific element
+                       let _ = setTimeout(() => {
+                          if !cancelled.contents {
+                            switch scrollContainerRef.current->Nullable.toOption {
+                            | Some(container) => {
+                                let element = container->Obj.magic
+                                let chapterId = `chapter-${currentChapter->Int.toString}`
+                                let chapterElement = element["querySelector"](`#${chapterId}`)
+                                if chapterElement !== Nullable.null->Obj.magic {
+                                  chapterElement["scrollIntoView"]({"behavior": "instant", "block": "start"})
+                                }
+                              }
+                            | None => ()
+                            }
+                          }
+                       }, 0)
+                     }
+                   | _ => ()
+                   }
+                 }
+              }
             }
-          }
-        | Error(err) => {
-            setError(_ => Some(err))
-            setLoading(_ => false)
+          | Error(err) => {
+              setError(_ => Some(err))
+              setLoading(_ => false)
+            }
           }
         }
       }
       let _ = fetchData()
     }
-    None
+    Some(() => { cancelled := true })
   }, (currentBook, currentChapter, selectedModuleIds, availableModules))
 
 
