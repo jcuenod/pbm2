@@ -27,10 +27,13 @@ let make = (~selectedModuleIds, ~availableModules, ~onWordClick: (int, int) => u
   let (error, setError) = React.useState(() => None)
   let (loadingPrev, setLoadingPrev) = React.useState(() => false)
   let (loadingNext, setLoadingNext) = React.useState(() => false)
+  let (prevLoadFailed, setPrevLoadFailed) = React.useState(() => false)
+  let (nextLoadFailed, setNextLoadFailed) = React.useState(() => false)
   let (visibleChapter, setVisibleChapter) = React.useState(() => 1)
   let lastY = React.useRef(0)
   let scrollContainerRef = React.useRef(Nullable.null)
   let previousScrollHeight = React.useRef(0)
+  let isInitialPreload = React.useRef(false)
 
   let maxChaptersForBook = React.useMemo1(() => {
     BibleData.books
@@ -135,9 +138,11 @@ let make = (~selectedModuleIds, ~availableModules, ~onWordClick: (int, int) => u
                   next: prev.next,
                 })
                 setLoadingPrev(_ => false)
+                setPrevLoadFailed(_ => false)
               }
             | Error(_) => {
                 setLoadingPrev(_ => false)
+                setPrevLoadFailed(_ => true)
               }
             }
           }
@@ -170,9 +175,11 @@ let make = (~selectedModuleIds, ~availableModules, ~onWordClick: (int, int) => u
                   next: Some({chapter: nextChapter, data: data}),
                 })
                 setLoadingNext(_ => false)
+                setNextLoadFailed(_ => false)
               }
             | Error(_) => {
                 setLoadingNext(_ => false)
+                setNextLoadFailed(_ => true)
               }
             }
           }
@@ -201,6 +208,8 @@ let make = (~selectedModuleIds, ~availableModules, ~onWordClick: (int, int) => u
   let handleBookChapterSelect = (book: BibleData.book, chapter: int) => {
     setCurrentBook(_ => book.id)
     setCurrentChapter(_ => chapter)
+    setPrevLoadFailed(_ => false)
+    setNextLoadFailed(_ => false)
   }
 
   let renderChapterContent = (chapterNum: int, data: ParabibleApi.textEndpointResult) => {
@@ -340,6 +349,46 @@ let make = (~selectedModuleIds, ~availableModules, ~onWordClick: (int, int) => u
               next: None,
             })
             setLoading(_ => false)
+            
+            // Preload previous chapter if not on chapter 1
+            if currentChapter > 1 {
+              isInitialPreload.current = true
+              setLoadingPrev(_ => true)
+              let prevResult = await fetchChapterData(currentBook, currentChapter - 1)
+              switch prevResult {
+              | Ok(prevData) => {
+                  setLoadedChapters(prev => {
+                    previous: Some({chapter: currentChapter - 1, data: prevData}),
+                    current: prev.current,
+                    next: prev.next,
+                  })
+                  setLoadingPrev(_ => false)
+                  setPrevLoadFailed(_ => false)
+                  
+                  // Scroll to current chapter after preload
+                  let _ = Promise.make((resolve, _reject) => {
+                    let _ = setTimeout(() => {
+                      switch scrollContainerRef.current->Nullable.toOption {
+                      | Some(container) => {
+                          let element = container->Obj.magic
+                          let chapterId = `chapter-${currentChapter->Int.toString}`
+                          let chapterElement = element["querySelector"](`#${chapterId}`)
+                          if chapterElement !== Nullable.null->Obj.magic {
+                            chapterElement["scrollIntoView"]({"behavior": "instant", "block": "start"})
+                          }
+                          resolve()
+                        }
+                      | None => resolve()
+                      }
+                    }, 0)
+                  })
+                }
+              | Error(_) => {
+                  setLoadingPrev(_ => false)
+                  setPrevLoadFailed(_ => true)
+                }
+              }
+            }
           }
         | Error(err) => {
             setError(_ => Some(err))
@@ -361,11 +410,17 @@ let make = (~selectedModuleIds, ~availableModules, ~onWordClick: (int, int) => u
         let currentScrollHeight = element["scrollHeight"]
         let oldHeight = previousScrollHeight.current
         
-        if oldHeight > 0 && currentScrollHeight > oldHeight {
+        // Only adjust scroll if this was a user-initiated load (not initial preload)
+        if !isInitialPreload.current && oldHeight > 0 && currentScrollHeight > oldHeight {
           // Content was added at the top, adjust scroll position
           let heightDifference = currentScrollHeight - oldHeight
           element["scrollTop"] = element["scrollTop"] + heightDifference
           previousScrollHeight.current = 0
+        }
+        
+        // Clear the initial preload flag after first render with previous chapter
+        if isInitialPreload.current {
+          isInitialPreload.current = false
         }
       }
     | None => ()
@@ -403,7 +458,22 @@ let make = (~selectedModuleIds, ~availableModules, ~onWordClick: (int, int) => u
           </div>
       | (false, None, Some(currentData)) => 
           <React.Fragment>
-            {loadingPrev ? <div className="text-center py-4 text-gray-500">{React.string("Loading previous chapter...")}</div> : React.null}
+            // Top overscroll indicator
+            {switch (loadedChapters.previous, loadingPrev, prevLoadFailed) {
+            | (None, true, _) => 
+                <div className="text-center py-4 text-gray-500 flex items-center justify-center gap-2">
+                  <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 814 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  {React.string("Loading previous chapter...")}
+                </div>
+            | (None, false, true) => 
+                <div className="text-center py-4 text-orange-500 dark:text-orange-400">
+                  {React.string("⚠ Could not load previous chapter")}
+                </div>
+            | _ => React.null
+            }}
             {switch loadedChapters.previous {
             | Some(prevData) => renderChapterContent(prevData.chapter, prevData.data)
             | None => React.null
@@ -413,7 +483,26 @@ let make = (~selectedModuleIds, ~availableModules, ~onWordClick: (int, int) => u
             | Some(nextData) => renderChapterContent(nextData.chapter, nextData.data)
             | None => React.null
             }}
-            {loadingNext ? <div className="text-center py-4 text-gray-500">{React.string("Loading next chapter...")}</div> : React.null}
+            // Bottom overscroll indicator
+            {switch (loadedChapters.next, loadingNext, nextLoadFailed, currentData.chapter >= maxChaptersForBook) {
+            | (None, true, _, _) => 
+                <div className="text-center py-4 text-gray-500 flex items-center justify-center gap-2">
+                  <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  {React.string("Loading next chapter...")}
+                </div>
+            | (None, false, true, _) => 
+                <div className="text-center py-4 text-orange-500 dark:text-orange-400">
+                  {React.string("⚠ Failed to load next chapter")}
+                </div>
+            | (None, false, false, true) => 
+                <div className="text-center py-4 text-gray-400 dark:text-gray-600 text-sm">
+                  {React.string("⬇ End of book")}
+                </div>
+            | _ => React.null
+            }}
           </React.Fragment>
       | _ => 
           <div className="text-center py-8 text-gray-500"> 
