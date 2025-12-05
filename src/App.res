@@ -161,11 +161,11 @@ let make = () => {
 
   <div className="h-screen w-screen flex flex-col bg-white dark:bg-black text-black dark:text-white">
     <div className="flex-1 relative overflow-hidden">
-      <div id={containerSelector} className="absolute inset-0">
-        <div className={"absolute inset-0 w-screen h-full transition-all duration-300" ++ (isPageVisible(0) ? "" : " pointer-events-none invisible")} style={transform: getPageTransform(0)}> {pageFor(~idx=0)} </div>
-        <div className={"absolute inset-0 w-screen h-full transition-all duration-300" ++ (isPageVisible(1) ? "" : " pointer-events-none invisible")} style={transform: getPageTransform(1)}> {pageFor(~idx=1)} </div>
-        <div className={"absolute inset-0 w-screen h-full transition-all duration-300" ++ (isPageVisible(2) ? "" : " pointer-events-none invisible")} style={transform: getPageTransform(2)}> {pageFor(~idx=2)} </div>
-        <div className={"absolute inset-0 w-screen h-full transition-all duration-300" ++ (isPageVisible(3) ? "" : " pointer-events-none invisible")} style={transform: getPageTransform(3)}> {pageFor(~idx=3)} </div>
+      <div id={containerSelector} className="absolute inset-0 overflow-hidden">
+        <div className={"absolute border-slate-400 border-r-1 -right-px top-0 bottom-0 w-[calc(100vw+2px)] h-full transition-all duration-300" ++ (isPageVisible(0) ? "" : " pointer-events-none invisible")} style={transform: getPageTransform(0)}> {pageFor(~idx=0)} </div>
+        <div className={"absolute border-slate-400 border-r-1 -right-px top-0 bottom-0 w-[calc(100vw+2px)] h-full transition-all duration-300" ++ (isPageVisible(1) ? "" : " pointer-events-none invisible")} style={transform: getPageTransform(1)}> {pageFor(~idx=1)} </div>
+        <div className={"absolute border-slate-400 border-r-1 -right-px top-0 bottom-0 w-[calc(100vw+2px)] h-full transition-all duration-300" ++ (isPageVisible(2) ? "" : " pointer-events-none invisible")} style={transform: getPageTransform(2)}> {pageFor(~idx=2)} </div>
+        <div className={"absolute border-slate-400 border-r-1 -right-px top-0 bottom-0 w-[calc(100vw+2px)] h-full transition-all duration-300" ++ (isPageVisible(3) ? "" : " pointer-events-none invisible")} style={transform: getPageTransform(3)}> {pageFor(~idx=3)} </div>
       </div>
     </div>
 
