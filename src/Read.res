@@ -37,6 +37,8 @@ let make = (~selectedModuleIds, ~availableModules, ~onWordClick: (int, int) => u
   
   React.useEffect1(() => {
     chaptersRef.current = chapters
+    setLoadingPrev(_ => false)
+    setLoadingNext(_ => false)
     None
   }, [chapters])
   
@@ -88,22 +90,31 @@ let make = (~selectedModuleIds, ~availableModules, ~onWordClick: (int, int) => u
     let sectionsArray: array<{..}> = chapterSections
     
     let visibleChapterNum = ref(visibleChapter)
-    sectionsArray->Array.forEach(section => {
-      let heading = section["querySelector"](".chapter-heading")
-      if heading !== Nullable.null->Obj.magic {
-        let rect = heading["getBoundingClientRect"]()
-        // Threshold needs to be > 64 (header 48 + padding 16) to catch the first chapter at the top
-        // Increased to 150 to account for potential margins and ensure we catch the chapter even if it's pushed down slightly
-        if rect["top"] <= 150. {
-          let sectionId = section["id"]
-          let chapterStr = sectionId->String.replace("chapter-", "")
-          switch chapterStr->Int.fromString {
-          | Some(num) => visibleChapterNum := num
-          | None => ()
+    
+    // If we are at the very top (or overscrolled), force the first chapter
+    if target["scrollTop"] <= 50 {
+      switch chaptersRef.current[0] {
+      | Some(c) => visibleChapterNum := c.chapter
+      | None => ()
+      }
+    } else {
+      sectionsArray->Array.forEach(section => {
+        let heading = section["querySelector"](".chapter-heading")
+        if heading !== Nullable.null->Obj.magic {
+          let rect = heading["getBoundingClientRect"]()
+          // Threshold needs to be > 64 (header 48 + padding 16) to catch the first chapter at the top
+          // Increased to 150 to account for potential margins and ensure we catch the chapter even if it's pushed down slightly
+          if rect["top"] <= 150. {
+            let sectionId = section["id"]
+            let chapterStr = sectionId->String.replace("chapter-", "")
+            switch chapterStr->Int.fromString {
+            | Some(num) => visibleChapterNum := num
+            | None => ()
+            }
           }
         }
-      }
-    })
+      })
+    }
     setVisibleChapter(_ => visibleChapterNum.contents)
 
     // Infinite scroll
@@ -133,7 +144,7 @@ let make = (~selectedModuleIds, ~availableModules, ~onWordClick: (int, int) => u
                       Array.concat([{chapter: prevChapter, data: data}], prev)
                     }
                   })
-                  setLoadingPrev(_ => false)
+                  // Loading state is cleared in useEffect when chapters update
                   setPrevLoadFailed(_ => false)
                 }
               | Error(_) => {
@@ -161,7 +172,7 @@ let make = (~selectedModuleIds, ~availableModules, ~onWordClick: (int, int) => u
                       Array.concat(prev, [{chapter: nextChapter, data: data}])
                     }
                   })
-                  setLoadingNext(_ => false)
+                  // Loading state is cleared in useEffect when chapters update
                   setNextLoadFailed(_ => false)
                 }
               | Error(_) => {
