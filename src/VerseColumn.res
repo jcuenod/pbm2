@@ -27,15 +27,16 @@ let make = (
   }
 
   let isVerseDiff = baseMatch->Option.isSome && match->Option.isSome && verseNum != baseVerseNum
-  let isChapterDiff = baseMatch->Option.isSome && match->Option.isSome && chapterNum != baseChapterNum
+  let isChapterDiff =
+    baseMatch->Option.isSome && match->Option.isSome && chapterNum != baseChapterNum
 
   let verseDisplay = switch match {
-  | Some(_) => 
-      if isChapterDiff {
-        `${chapterNum->Int.toString}:${verseNum->Int.toString}`
-      } else {
-        verseNum->Int.toString
-      }
+  | Some(_) =>
+    if isChapterDiff {
+      `${chapterNum->Int.toString}:${verseNum->Int.toString}`
+    } else {
+      verseNum->Int.toString
+    }
   | None => ""
   }
 
@@ -48,55 +49,55 @@ let make = (
   }
 
   <div key={moduleId->Int.toString} className={columnClass}>
-    <span className={verseNumClass}>
-      {React.string(verseDisplay)}
-    </span>
+    <span className={verseNumClass}> {React.string(verseDisplay)} </span>
     {switch match {
     | Some(match) =>
-        <span className="mb-2">
-          {switch match.type_ {
-          | "html" => 
-              switch match.html {
-              | Some(htmlContent) => 
-                  <span dangerouslySetInnerHTML={"__html": htmlContent} className={sizeClass} />
-              | None => React.null
-              }
-          | "wordArray" =>
-              switch match.wordArray {
-              | Some(words) =>
-                  <span className={sizeClass}>
-                    {words->Array.map(word => {
-                      let isSelected = switch selectedWord {
-                      | Some((selectedWid, selectedModuleId)) => 
-                          word.wid == selectedWid && moduleId == selectedModuleId
-                      | None => false
-                      }
-                      let highlightClass = isSelected 
-                        ? " text-blue-600 dark:text-blue-400" 
-                        : ""
-                      <React.Fragment key={word.wid->Int.toString}>{
-                        switch word.leader {
-                        | Some(leader) => React.string(leader)
-                        | None => React.null
-                        }}<span
-                          className={"cursor-pointer hover:text-blue-500 dark:hover:text-blue-300" ++ highlightClass}
-                          onClick={_ => onWordClick(word.wid, moduleId)}
-                        >{React.string(word.text)}</span>{
-                        switch word.trailer {
-                        | Some(trailer) => React.string(trailer)
-                        | None => React.string(" ")
-                        }}</React.Fragment>
-                    })->React.array}
+      <span className="mb-2">
+        {switch match.type_ {
+        | "html" =>
+          switch match.html {
+          | Some(htmlContent) =>
+            <span dangerouslySetInnerHTML={"__html": htmlContent} className={sizeClass} />
+          | None => React.null
+          }
+        | "wordArray" =>
+          switch match.wordArray {
+          | Some(words) =>
+            <span className={sizeClass}>
+              {words
+              ->Array.map(word => {
+                let isSelected = switch selectedWord {
+                | Some((selectedWid, selectedModuleId)) =>
+                  word.wid == selectedWid && moduleId == selectedModuleId
+                | None => false
+                }
+                let highlightClass = isSelected ? " text-blue-600 dark:text-blue-400" : ""
+                <React.Fragment key={word.wid->Int.toString}>
+                  {switch word.leader {
+                  | Some(leader) => React.string(leader)
+                  | None => React.null
+                  }}
+                  <span
+                    className={"cursor-pointer hover:text-blue-500 dark:hover:text-blue-300" ++
+                    highlightClass}
+                    onClick={_ => onWordClick(word.wid, moduleId)}
+                  >
+                    {React.string(word.text)}
                   </span>
-              | None => React.null
-              }
-          | _ => React.null
-          }}
-        </span>
-    | None => 
-        <div className="text-gray-400 dark:text-stone-600 text-sm italic">
-          {React.string("—")}
-        </div>
+                  {switch word.trailer {
+                  | Some(trailer) => React.string(trailer)
+                  | None => React.string(" ")
+                  }}
+                </React.Fragment>
+              })
+              ->React.array}
+            </span>
+          | None => React.null
+          }
+        | _ => React.null
+        }}
+      </span>
+    | None => React.null
     }}
   </div>
 }
