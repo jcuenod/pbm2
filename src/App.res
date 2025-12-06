@@ -113,10 +113,33 @@ let make = () => {
     animateTo(2) // Switch to Search tab
   }
 
+  let handleUpdateSearchTerm = (index: int, updatedTerm: ParabibleApi.searchTermData) => {
+    setSearchTerms(current =>
+      current->Array.mapWithIndex((term, idx) =>
+        if idx == index {
+          updatedTerm
+        } else {
+          term
+        }
+      )
+    )
+  }
+
+  let handleDeleteSearchTerm = (index: int) => {
+    setSearchTerms(current => current->Belt.Array.keepWithIndex((_, idx) => idx != index))
+  }
+
   let pageFor = (~idx) => switch idx {
   | 0 => <Read selectedModuleIds availableModules onWordClick={handleWordClick} selectedWord />
   | 1 => <Tools selectedWord onAddSearchTerms={handleAddSearchTerms} hasExistingSearchTerms={searchTerms->Array.length > 0} />
-  | 2 => <Search searchTerms selectedModuleIds availableModules />
+  | 2 => <Search 
+      searchTerms 
+      selectedModuleIds 
+      availableModules 
+      onUpdateSearchTerm={handleUpdateSearchTerm} 
+      onDeleteSearchTerm={handleDeleteSearchTerm} 
+      onWordClick={handleWordClick} 
+    />
   | 3 => <Settings 
       onToggle={_ => ()} 
       availableModules

@@ -238,7 +238,7 @@ let fetchTermSearch = async (
     | None => ""
     }
     
-    let url = `https://dev.parabible.com/api/v2/termSearch?${termParams}&modules=${modules}&treeNodeType=${treeNodeType}${refParam}&pageSize=${pageSize->Int.toString}&pageNumber=${pageNumber->Int.toString}`
+    let url = `https://dev.parabible.com/api/v2/termSearch?${termParams}&modules=${modules}&treeNodeType=${treeNodeType}${refParam}&pageSize=${pageSize->Int.toString}&page=${pageNumber->Int.toString}`
     
     let response = await Webapi.Fetch.fetch(url)
     

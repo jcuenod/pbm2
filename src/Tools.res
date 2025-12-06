@@ -13,6 +13,10 @@ let isHebrew = (str: string): bool => {
   %re("/[\u0590-\u05FF]/")->RegExp.test(str)
 }
 
+let isGreek = (str: string): bool => {
+  %re("/[\u0370-\u03FF\u1F00-\u1FFF]/")->RegExp.test(str)
+}
+
 // Format word details into primary and secondary display data
 let formatWordDetails = (attrs: array<ParabibleApi.wordAttribute>): (array<string>, array<string>) => {
   let lexeme = getAttr(attrs, "lexeme")
@@ -233,6 +237,14 @@ let make = (~selectedWord: option<(int, int)>, ~onAddSearchTerms: (array<Parabib
                 let bgColor = isSelected 
                   ? "bg-blue-100 dark:bg-blue-900 border-blue-500" 
                   : "bg-white dark:bg-stone-800 border-gray-200 dark:border-stone-700"
+                let langClass =
+                  if isHebrew(attr.value) {
+                    "font-['SBL_BibLit'] text-xl rtl text-right"
+                  } else if isGreek(attr.value) {
+                    "font-['SBL_BibLit'] text-lg tracking-wide"
+                  } else {
+                    ""
+                  }
                 
                 <div 
                   key={attr.key} 
@@ -251,7 +263,7 @@ let make = (~selectedWord: option<(int, int)>, ~onAddSearchTerms: (array<Parabib
                   <div className="font-semibold text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">
                     {String.replaceAll(attr.key, "_", " ")->React.string}
                   </div>
-                  <div className="mt-1 text-gray-900 dark:text-gray-100">
+                  <div className={`mt-1 text-gray-900 dark:text-gray-100 ${langClass}`}>
                     {React.string(attr.value)}
                   </div>
                 </div>

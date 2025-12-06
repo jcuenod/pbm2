@@ -6,7 +6,14 @@ let make = (
   ~moduleAbbrev: string,
   ~selectedWord: option<(int, int)>,
   ~onWordClick: (int, int) => unit,
+  ~highlightWords: option<array<(int, int)>>=?,
 ) => {
+  let highlightWordsArr =
+    switch highlightWords {
+    | Some(hw) => hw
+    | None => []
+    }
+
   let (isRtl, fontClass, sizeClass) = switch moduleAbbrev {
   | "BHSA" => (true, "font-['SBL_BibLit']", "text-2xl")
   | "APF" | "LXXR" | "NA1904" => (false, "font-['SBL_BibLit']", "text-lg")
@@ -71,7 +78,15 @@ let make = (
                   word.wid == selectedWid && moduleId == selectedModuleId
                 | None => false
                 }
-                let highlightClass = isSelected ? " text-blue-600 dark:text-blue-400" : ""
+                let isHighlighted = highlightWordsArr->Array.some(((wid, mid)) => wid == word.wid && mid == moduleId)
+                let highlightClass =
+                  if isSelected {
+                    " text-blue-600 dark:text-blue-400"
+                  } else if isHighlighted {
+                    " font-semibold text-blue-600 dark:text-blue-400"
+                  } else {
+                    ""
+                  }
                 <React.Fragment key={word.wid->Int.toString}>
                   {switch word.leader {
                   | Some(leader) => React.string(leader)

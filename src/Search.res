@@ -1,24 +1,238 @@
+type bookDetail = {
+  name: string,
+  abbreviation: string,
+}
+
+@module("./assets/bookDetails.json")
+external rawBookDetails: array<JSON.t> = "default"
+
+let bookDetails: array<option<bookDetail>> = rawBookDetails->Array.map(entry =>
+  switch JSON.Decode.object(entry) {
+  | Some(obj) =>
+    obj
+    ->Dict.get("name")
+    ->Option.flatMap(JSON.Decode.string)
+    ->Option.map(name => {
+      let abbreviation =
+        obj->Dict.get("abbreviation")->Option.flatMap(JSON.Decode.string)->Option.getOr(name)
+      {name, abbreviation}
+    })
+  | None => None
+  }
+)
+
+let getBookDetailByIndex = (bookIndex: int): option<bookDetail> =>
+  if bookIndex <= 0 {
+    None
+  } else {
+    bookDetails->Array.get(bookIndex - 1)->Option.flatMap(x => x)
+  }
+
+let formatReference = (match: option<ParabibleApi.matchingText>): option<string> =>
+  switch match {
+  | Some(m) =>
+    let bookIndex = m.rid / 1_000_000
+    let chapterNum = (m.rid / 1000)->mod(1000)
+    let verseNum = m.rid->mod(1000)
+    let bookName = switch getBookDetailByIndex(bookIndex) {
+    | Some(detail) => detail.name
+    | None => "Unknown book"
+    }
+    let chapterVerse = if verseNum > 0 {
+      `${chapterNum->Int.toString}:${verseNum->Int.toString}`
+    } else {
+      chapterNum->Int.toString
+    }
+    Some(`${bookName} ${chapterVerse}`)
+  | None => None
+  }
+
 @react.component
-let make = (~searchTerms: array<ParabibleApi.searchTermData>, ~selectedModuleIds: array<int>, ~availableModules: array<ParabibleApi.moduleInfo>) => {
+let make = (
+  ~searchTerms: array<ParabibleApi.searchTermData>,
+  ~selectedModuleIds: array<int>,
+  ~availableModules: array<ParabibleApi.moduleInfo>,
+  ~onUpdateSearchTerm: (int, ParabibleApi.searchTermData) => unit,
+  ~onDeleteSearchTerm: int => unit,
+  ~onWordClick: (int, int) => unit,
+) => {
   let (searchResults, setSearchResults) = React.useState(() => None)
   let (loading, setLoading) = React.useState(() => false)
   let (error, setError) = React.useState(() => None)
   let (resultCount, setResultCount) = React.useState(() => 0)
+  let (currentPage, setCurrentPage) = React.useState(() => 0)
+
+  let (editingTermIndex, setEditingTermIndex) = React.useState(() => None)
+  let (editingDraft, setEditingDraft) = React.useState(() => None)
+  let (newAttrKey, setNewAttrKey) = React.useState(() => "")
+  let (newAttrValue, setNewAttrValue) = React.useState(() => "")
+  let pageSize = 20
+
+  let clearEditingState = () => {
+    setEditingTermIndex(_ => None)
+    setEditingDraft(_ => None)
+    setNewAttrKey(_ => "")
+    setNewAttrValue(_ => "")
+  }
+
+  let startEditingTerm = (idx: int) => {
+    switch searchTerms->Array.get(idx) {
+    | Some(term) => {
+        setEditingTermIndex(_ => Some(idx))
+        setEditingDraft(_ => Some(term))
+        setNewAttrKey(_ => "")
+        setNewAttrValue(_ => "")
+      }
+    | None => ()
+    }
+  }
+
+  let updateDraftAttributes = (~index: int, ~key: option<string>=?, ~value: option<string>=?) => {
+    setEditingDraft(current =>
+      switch current {
+      | Some(term) => {
+          let updated =
+            term.attributes
+            ->Array.mapWithIndex((attr, attrIdx) => {
+              let (attrKey, attrValue) = attr
+              if attrIdx == index {
+                let nextKey = switch key {
+                | Some(k) => k
+                | None => attrKey
+                }
+                let nextValue = switch value {
+                | Some(v) => v
+                | None => attrValue
+                }
+                (nextKey, nextValue)
+              } else {
+                (attrKey, attrValue)
+              }
+            })
+          Some({inverted: term.inverted, attributes: updated})
+        }
+      | None => None
+      }
+    )
+  }
+
+  let removeDraftAttribute = (attrIdx: int) => {
+    setEditingDraft(current =>
+      switch current {
+      | Some(term) => {
+          let filtered = term.attributes->Belt.Array.keepWithIndex((_, idx) => idx != attrIdx)
+          Some({inverted: term.inverted, attributes: filtered})
+        }
+      | None => None
+      }
+    )
+  }
+
+  let addDraftAttribute = () => {
+    let keyTrimmed = String.trim(newAttrKey)
+    let valueTrimmed = String.trim(newAttrValue)
+    if keyTrimmed == "" || valueTrimmed == "" {
+      ()
+    } else {
+      setEditingDraft(current =>
+        switch current {
+        | Some(term) => {
+            let appended = Array.concat(term.attributes, [(keyTrimmed, valueTrimmed)])
+            Some({inverted: term.inverted, attributes: appended})
+          }
+        | None => None
+        }
+      )
+      setNewAttrKey(_ => "")
+      setNewAttrValue(_ => "")
+    }
+  }
+
+  let toggleDraftInverted = () => {
+    setEditingDraft(current =>
+      switch current {
+      | Some(term) => Some({inverted: !term.inverted, attributes: term.attributes})
+      | None => None
+      }
+    )
+  }
+
+  let saveDraft = () => {
+    switch (editingTermIndex, editingDraft) {
+    | (Some(idx), Some(term)) => {
+        onUpdateSearchTerm(idx, term)
+        clearEditingState()
+      }
+    | _ => ()
+    }
+  }
+
+  let deleteTerm = idx => {
+    onDeleteSearchTerm(idx)
+    switch editingTermIndex {
+    | Some(editIdx) if editIdx == idx => clearEditingState()
+    | _ => ()
+    }
+  }
+
+  let draftIsValid = switch editingDraft {
+  | Some(term) => term.attributes->Array.every(((key, value)) => String.trim(key) != "" && String.trim(value) != "")
+  | None => false
+  }
+  let canAddNewAttr = String.trim(newAttrKey) != "" && String.trim(newAttrValue) != ""
+
+  let getModuleAbbrev = (moduleId: int) =>
+    availableModules
+    ->Array.find(m => m.moduleId == moduleId)
+    ->Option.map(m => m.abbreviation)
+    ->Option.getOr("")
+
+  let hasRenderableContent = (match: ParabibleApi.matchingText) =>
+    switch match.type_ {
+    | "html" => match.html->Option.isSome
+    | "wordArray" => match.wordArray->Option.isSome
+    | _ => false
+    }
+
+  let totalPages = if resultCount <= 0 {
+    0
+  } else {
+    (resultCount + pageSize - 1) / pageSize
+  }
+
+  let goToPage = (page: int) =>
+    if page >= 0 && (totalPages == 0 || page < totalPages) {
+      setCurrentPage(_ => page)
+    } else {
+      ()
+    }
+
+  React.useEffect2(() => {
+    setCurrentPage(_ => 0)
+    None
+  }, (searchTerms, selectedModuleIds))
 
   // Fetch search results when searchTerms or selectedModuleIds change
-  React.useEffect2(() => {
+  React.useEffect3(() => {
     if searchTerms->Array.length > 0 && selectedModuleIds->Array.length > 0 {
       setLoading(_ => true)
       setError(_ => None)
-      
+
       let fetchData = async () => {
-        let modulesStr = selectedModuleIds
+        let modulesStr =
+          selectedModuleIds
           ->Array.filterMap(id => {
-            availableModules->Array.find((m: ParabibleApi.moduleInfo) => m.moduleId == id)
-              ->Option.map((m: ParabibleApi.moduleInfo) => m.abbreviation)
+            availableModules
+            ->Array.find((m: ParabibleApi.moduleInfo) => m.moduleId == id)
+            ->Option.map((m: ParabibleApi.moduleInfo) => m.abbreviation)
           })
           ->Array.join(",")
-        let result = await ParabibleApi.fetchTermSearch(searchTerms, modulesStr)
+        let result = await ParabibleApi.fetchTermSearch(
+          searchTerms,
+          modulesStr,
+          ~pageSize,
+          ~pageNumber=currentPage,
+        )
         switch result {
         | Ok(data) => {
             setSearchResults(_ => Some(data))
@@ -31,116 +245,311 @@ let make = (~searchTerms: array<ParabibleApi.searchTermData>, ~selectedModuleIds
           }
         }
       }
-      
+
       let _ = fetchData()
     } else {
       setSearchResults(_ => None)
       setResultCount(_ => 0)
     }
     None
-  }, (searchTerms, selectedModuleIds))
+  }, (searchTerms, selectedModuleIds, currentPage))
 
   <div className="flex flex-col h-full">
     <div className="p-4 border-b border-gray-200 dark:border-stone-800">
-      <h1 className="text-2xl font-bold mb-2">{React.string("Search Results")}</h1>
-      {searchTerms->Array.length > 0 ? (
-        <div className="space-y-2">
-          <div className="text-sm text-gray-600 dark:text-gray-400">
-            {React.string(`${resultCount->Int.toString} results found`)}
-          </div>
-          <div className="text-xs space-y-1">
-            {searchTerms->Array.mapWithIndex((term, idx) => {
-              <div key={idx->Int.toString} className="bg-gray-100 dark:bg-stone-800 p-2 rounded">
-                <div className="font-semibold">
-                  {React.string(`Term ${(idx + 1)->Int.toString}${term.inverted ? " (NOT)" : ""}:`)}
+      <h1 className="text-2xl font-bold mb-2"> {React.string("Search Results")} </h1>
+      {searchTerms->Array.length > 0
+        ? <div className="space-y-4">
+            <div className="text-sm text-gray-600 dark:text-gray-400">
+              {React.string(`${resultCount->Int.toString} results found`)}
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {searchTerms
+              ->Array.mapWithIndex((term, idx) => {
+                let primaryAttr = term.attributes->Array.get(0)
+                let summary = switch primaryAttr {
+                | Some((key, value)) => `${String.replaceAll(key, "_", " ")}: ${value}`
+                | None => "No attributes"
+                }
+                let extraCount = term.attributes->Array.length - 1
+                let summaryText = if extraCount > 0 {
+                  summary ++ " (+" ++ extraCount->Int.toString ++ ")"
+                } else {
+                  summary
+                }
+
+                <div
+                  key={idx->Int.toString}
+                  className="group flex items-center bg-stone-100 dark:bg-stone-800 rounded-lg border border-stone-200 dark:border-stone-700 overflow-hidden transition-all active:scale-95">
+                  <button
+                    className="px-3 py-2 text-sm font-medium text-stone-900 dark:text-stone-100 hover:bg-stone-200 dark:hover:bg-stone-700 flex items-center gap-2"
+                    onClick={_ => startEditingTerm(idx)}>
+                    {if term.inverted {
+                      <span
+                        className="text-xs font-bold text-rose-600 bg-rose-100 dark:bg-rose-900/30 px-1.5 py-0.5 rounded">
+                        {React.string("NOT")}
+                      </span>
+                    } else {
+                      React.null
+                    }}
+                    <span> {React.string(summaryText)} </span>
+                  </button>
+                  <div className="w-px h-4 bg-stone-300 dark:bg-stone-600" />
+                  <button
+                    className="px-2 py-2 hover:bg-rose-100 dark:hover:bg-rose-900/30 text-stone-400 hover:text-rose-600 transition-colors"
+                    onClick={_ => deleteTerm(idx)}
+                    ariaLabel="Remove term">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M6 18L18 6M6 6l12 12"
+                      />
+                    </svg>
+                  </button>
                 </div>
-                <div className="ml-2 space-y-0.5">
-                  {term.attributes->Array.map(((key, value)) => {
-                    <div key={`${key}-${value}`}>
-                      {React.string(`${key}: ${value}`)}
-                    </div>
-                  })->React.array}
+              })
+              ->React.array}
+            </div>
+            {totalPages > 0
+              ? <div className="space-y-2">
+                  <Pagination
+                    totalPages
+                    currentPage
+                    onPageChange={goToPage}
+                  />
                 </div>
-              </div>
-            })->React.array}
+              : React.null}
           </div>
-        </div>
-      ) : (
-        <div className="text-sm text-gray-600 dark:text-gray-400">
-          {React.string("No search terms. Select word attributes in Tools to begin.")}
-        </div>
-      )}
+        : <div className="text-sm text-gray-600 dark:text-gray-400">
+            {React.string("No search terms. Select word attributes in Tools to begin.")}
+          </div>}
     </div>
 
     <div className="flex-1 overflow-auto p-4">
       {switch (loading, error, searchResults) {
-      | (true, _, _) => 
-          <div className="text-center py-8"> {React.string("Loading...")} </div>
-      | (_, Some(err), _) => 
-          <div className="text-center py-8 text-red-600 dark:text-red-400"> 
-            {React.string(`Error: ${err}`)} 
-          </div>
-      | (false, None, Some(results)) => 
+      | (true, _, _) => <div className="text-center py-8"> {React.string("Loading...")} </div>
+      | (_, Some(err), _) =>
+        <div className="text-center py-8 text-red-600 dark:text-red-400">
+          {React.string(`Error: ${err}`)}
+        </div>
+      | (false, None, Some(results)) => {
+          let highlightPairs = results.matchingWords->Array.map(mw => (mw.wid, mw.moduleId))
           <div className="space-y-4">
-            {results.matchingText->Array.mapWithIndex((row, rowIdx) => {
-              <div key={rowIdx->Int.toString} className="border border-gray-200 dark:border-stone-800 rounded-lg p-4">
-                {row->Array.mapWithIndex((moduleResults, moduleIdx) => {
-                  <div key={`${rowIdx->Int.toString}-${moduleIdx->Int.toString}`} className="mb-3 last:mb-0">
-                    {moduleResults->Array.map(textResult => {
-                      <div key={`${textResult.rid->Int.toString}-${textResult.moduleId->Int.toString}`} className="mb-2">
-                        {switch textResult.type_ {
-                        | "html" => 
-                            switch textResult.html {
-                            | Some(htmlContent) => 
-                                <div 
-                                  className="text-base leading-relaxed"
-                                  dangerouslySetInnerHTML={{"__html": htmlContent}}
-                                />
-                            | None => React.null
-                            }
-                        | "wordArray" =>
-                            switch textResult.wordArray {
-                            | Some(words) => 
-                                <div className="text-base leading-relaxed">
-                                  {words->Array.map(word => {
-                                    let isMatching = results.matchingWords->Array.some(mw => 
-                                      mw.wid == word.wid && mw.moduleId == textResult.moduleId
-                                    )
-                                    let className = isMatching 
-                                      ? "font-bold text-blue-600 dark:text-blue-400" 
-                                      : ""
-                                    
-                                    <React.Fragment key={word.wid->Int.toString}>
-                                      {switch word.leader {
-                                      | Some(leader) => React.string(leader)
-                                      | None => React.null
-                                      }}
-                                      <span className={className}>
-                                        {React.string(word.text)}
-                                      </span>
-                                      {switch word.trailer {
-                                      | Some(trailer) => React.string(trailer)
-                                      | None => React.null
-                                      }}
-                                    </React.Fragment>
-                                  })->React.array}
-                                </div>
-                            | None => React.null
-                            }
-                        | _ => React.null
-                        }}
+            {results.matchingText
+            ->Array.mapWithIndex((row, rowIdx) => {
+              let moduleColumns = row->Array.filterMap(moduleResults => {
+                let matches = moduleResults->Array.filter(hasRenderableContent)
+                switch matches->Array.get(0) {
+                | Some(firstMatch) => {
+                    let moduleId = firstMatch.moduleId
+                    let moduleAbbrev = getModuleAbbrev(moduleId)
+                    Some((moduleId, moduleAbbrev, matches))
+                  }
+                | None => None
+                }
+              })
+              switch moduleColumns->Array.length {
+              | 0 => React.null
+              | columnCount => {
+                  let baseMatch =
+                    moduleColumns
+                    ->Array.find(((_, _, matches)) => matches->Array.length > 0)
+                    ->Option.flatMap(((_, _, matches)) => matches->Array.get(0))
+                  let referenceLabel = formatReference(baseMatch)
+                  <div
+                    key={rowIdx->Int.toString}
+                    className="border border-gray-200 dark:border-stone-800 rounded-lg p-4"
+                  >
+                    {switch referenceLabel {
+                    | Some(label) =>
+                      <div className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-3">
+                        {React.string(label)}
                       </div>
-                    })->React.array}
+                    | None => React.null
+                    }}
+                    <div
+                      className="grid gap-4"
+                      style={{
+                        gridTemplateColumns: `repeat(${columnCount->Int.toString}, minmax(0, 1fr))`,
+                      }}
+                    >
+                      {moduleColumns
+                      ->Array.map(((moduleId, moduleAbbrev, matches)) => {
+                        <div
+                          key={`${rowIdx->Int.toString}-${moduleId->Int.toString}`}
+                          className="space-y-3"
+                        >
+                          {matches
+                          ->Array.map(
+                            match => {
+                              <VerseColumn
+                                key={`${moduleId->Int.toString}-${match.rid->Int.toString}`}
+                                match={Some(match)}
+                                baseMatch={baseMatch}
+                                moduleId
+                                moduleAbbrev
+                                selectedWord={None}
+                                onWordClick
+                                highlightWords=?Some(highlightPairs)
+                              />
+                            },
+                          )
+                          ->React.array}
+                        </div>
+                      })
+                      ->React.array}
+                    </div>
                   </div>
-                })->React.array}
-              </div>
-            })->React.array}
+                }
+              }
+            })
+            ->React.array}
           </div>
-      | _ => 
-          <div className="text-center py-8 text-gray-500"> 
-            {React.string("Select search terms in the Tools view to begin searching")} 
-          </div>
+        }
+      | _ =>
+        <div className="text-center py-8 text-gray-500">
+          {React.string("Select search terms in the Tools view to begin searching")}
+        </div>
       }}
     </div>
+
+    {switch (editingTermIndex, editingDraft) {
+    | (Some(idx), Some(draft)) =>
+      <div className="fixed inset-0 z-40 flex items-end">
+        <div className="absolute inset-0 bg-black/40" onClick={_ => clearEditingState()} />
+        <div className="relative w-full bg-white dark:bg-stone-900 rounded-t-3xl p-5 shadow-2xl max-h-[85vh] overflow-hidden">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <div className="text-xs uppercase tracking-wide text-stone-500 dark:text-stone-400">
+                {React.string("Editing search term")}
+              </div>
+              <div className="text-lg font-semibold text-stone-900 dark:text-stone-100">
+                {React.string(`Term ${(idx + 1)->Int.toString}${draft.inverted ? " (NOT)" : ""}`)}
+              </div>
+            </div>
+            <button
+              className="w-10 h-10 rounded-xl bg-stone-100 dark:bg-stone-800 text-stone-500 dark:text-stone-300 flex items-center justify-center"
+              onClick={_ => clearEditingState()}
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+
+          <button
+            className={
+              "mt-4 w-full px-4 py-3 rounded-2xl text-sm font-semibold text-center transition-colors " ++
+              (draft.inverted
+                ? "bg-rose-600 text-white"
+                : "bg-stone-100 dark:bg-stone-800 text-stone-800 dark:text-stone-100")
+            }
+            onClick={_ => toggleDraftInverted()}
+          >
+            {React.string(
+              draft.inverted ? "Term is inverted (NOT). Tap to revert." : "Tap to invert this term (NOT)"
+            )}
+          </button>
+
+          <div className="mt-4 space-y-3 max-h-[45vh] overflow-auto pr-1">
+            {switch draft.attributes->Array.length {
+            | 0 =>
+              <div className="text-sm text-stone-600 dark:text-stone-300">
+                {React.string("Add at least one attribute key/value pair")}
+              </div>
+            | _ =>
+              draft.attributes
+              ->Array.mapWithIndex((attr, attrIdx) => {
+                let (key, value) = attr
+                <div key={`${key}-${attrIdx->Int.toString}`} className="flex items-center gap-2">
+                  <input
+                    className="flex-1 rounded-xl border border-stone-200 dark:border-stone-700 bg-transparent px-3 py-2 text-sm"
+                    type_="text"
+                    value={key}
+                    onChange={e =>
+                      updateDraftAttributes(~index=attrIdx, ~key=?Some(ReactEvent.Form.target(e)["value"]))
+                    }
+                    placeholder="Attribute key"
+                  />
+                  <input
+                    className="flex-1 rounded-xl border border-stone-200 dark:border-stone-700 bg-transparent px-3 py-2 text-sm"
+                    type_="text"
+                    value={value}
+                    onChange={e =>
+                      updateDraftAttributes(~index=attrIdx, ~value=?Some(ReactEvent.Form.target(e)["value"]))
+                    }
+                    placeholder="Attribute value"
+                  />
+                  <button
+                    className="w-10 h-10 rounded-xl bg-rose-100 dark:bg-rose-900/40 text-rose-700 dark:text-rose-300"
+                    onClick={_ => removeDraftAttribute(attrIdx)}
+                    ariaLabel="Remove attribute"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              })
+              ->React.array
+            }}
+          </div>
+
+          <div className="mt-4 flex flex-col gap-2">
+            <div className="flex gap-2">
+              <input
+                className="flex-1 rounded-xl border border-stone-200 dark:border-stone-700 bg-transparent px-3 py-2 text-sm"
+                type_="text"
+                value={newAttrKey}
+                onChange={e => setNewAttrKey(_ => ReactEvent.Form.target(e)["value"])}
+                placeholder="New attribute key"
+              />
+              <input
+                className="flex-1 rounded-xl border border-stone-200 dark:border-stone-700 bg-transparent px-3 py-2 text-sm"
+                type_="text"
+                value={newAttrValue}
+                onChange={e => setNewAttrValue(_ => ReactEvent.Form.target(e)["value"])}
+                placeholder="New attribute value"
+              />
+            </div>
+            <button
+              className={
+                "h-11 rounded-2xl font-semibold text-sm transition-all active:scale-95 " ++
+                (canAddNewAttr
+                  ? "bg-stone-900 text-white dark:bg-stone-100 dark:text-stone-900"
+                  : "bg-stone-200 dark:bg-stone-800 text-stone-500 cursor-not-allowed")
+              }
+              disabled={!canAddNewAttr}
+              onClick={_ => addDraftAttribute()}
+            >
+              {React.string("Add attribute")}
+            </button>
+          </div>
+
+          <div className="mt-5 flex gap-3">
+            <button
+              className="flex-1 h-12 rounded-2xl border border-stone-300 dark:border-stone-700 text-stone-700 dark:text-stone-200 font-semibold"
+              onClick={_ => clearEditingState()}
+            >
+              {React.string("Cancel")}
+            </button>
+            <button
+              className={
+                "flex-1 h-12 rounded-2xl font-semibold text-white transition-all active:scale-95 " ++
+                (draftIsValid
+                  ? "bg-teal-600 hover:bg-teal-700"
+                  : "bg-teal-300 cursor-not-allowed")
+              }
+              disabled={!draftIsValid}
+              onClick={_ => saveDraft()}
+            >
+              {React.string("Save term")}
+            </button>
+          </div>
+        </div>
+      </div>
+    | _ => React.null
+    }}
   </div>
 }
