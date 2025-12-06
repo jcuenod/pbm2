@@ -109,6 +109,9 @@
         {"feature":"pron_suffix_person", "key":"2", "value": "Second"},
         {"feature":"pron_suffix_person", "key":"3", "value": "Third"},
 
+        {"feature":"has_pronominal_suffix", "key":"Y", "value": "Yes"},
+        {"feature":"has_pronominal_suffix", "key":"N", "value": "No"},
+
         {"feature":"extra", "key":"attic", "value": "Attic"},
 
         {"feature":"case_", "key": "nom", "value": "Nominative"},

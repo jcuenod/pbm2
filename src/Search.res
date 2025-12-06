@@ -3,6 +3,26 @@ type bookDetail = {
   abbreviation: string,
 }
 
+type featureDef = {
+  key: string,
+  value: string,
+  enum: bool,
+}
+
+type featureValueDef = {
+  feature: string,
+  key: string,
+  value: string,
+}
+
+type featuresData = {
+  features: array<featureDef>,
+  values: array<featureValueDef>,
+}
+
+@module("./assets/features.json")
+external featuresData: featuresData = "default"
+
 @module("./assets/bookDetails.json")
 external rawBookDetails: array<JSON.t> = "default"
 
@@ -64,15 +84,20 @@ let make = (
 
   let (editingTermIndex, setEditingTermIndex) = React.useState(() => None)
   let (editingDraft, setEditingDraft) = React.useState(() => None)
+  let (isClosing, setIsClosing) = React.useState(() => false)
   let (newAttrKey, setNewAttrKey) = React.useState(() => "")
   let (newAttrValue, setNewAttrValue) = React.useState(() => "")
   let pageSize = 20
 
   let clearEditingState = () => {
-    setEditingTermIndex(_ => None)
-    setEditingDraft(_ => None)
-    setNewAttrKey(_ => "")
-    setNewAttrValue(_ => "")
+    setIsClosing(_ => true)
+    let _ = Js.Global.setTimeout(() => {
+      setEditingTermIndex(_ => None)
+      setEditingDraft(_ => None)
+      setNewAttrKey(_ => "")
+      setNewAttrValue(_ => "")
+      setIsClosing(_ => false)
+    }, 300)
   }
 
   let startEditingTerm = (idx: int) => {
@@ -416,9 +441,11 @@ let make = (
 
     {switch (editingTermIndex, editingDraft) {
     | (Some(idx), Some(draft)) =>
+      let animationClass = isClosing ? "animate-slide-down" : "animate-slide-up"
+      let backdropClass = isClosing ? "animate-fade-out" : "animate-fade-in"
       <div className="fixed inset-0 z-40 flex items-end">
-        <div className="absolute inset-0 bg-black/40" onClick={_ => clearEditingState()} />
-        <div className="relative w-full bg-white dark:bg-stone-900 rounded-t-3xl p-5 shadow-2xl max-h-[85vh] overflow-hidden">
+        <div className={"absolute inset-0 bg-black/40 " ++ backdropClass} onClick={_ => clearEditingState()} />
+        <div className={"relative w-full bg-white dark:bg-stone-900 rounded-t-3xl p-5 shadow-2xl max-h-[85vh] overflow-hidden " ++ animationClass}>
           <div className="flex items-center justify-between gap-3">
             <div>
               <div className="text-xs uppercase tracking-wide text-stone-500 dark:text-stone-400">
@@ -462,27 +489,59 @@ let make = (
               draft.attributes
               ->Array.mapWithIndex((attr, attrIdx) => {
                 let (key, value) = attr
-                <div key={`${key}-${attrIdx->Int.toString}`} className="flex items-center gap-2">
-                  <input
-                    className="flex-1 rounded-xl border border-stone-200 dark:border-stone-700 bg-transparent px-3 py-2 text-sm"
-                    type_="text"
+                let featureDef = featuresData.features->Array.find(f => f.key == key)
+
+                <div key={`${key}-${attrIdx->Int.toString}`} className="flex items-center gap-2 w-full">
+                  <select
+                    className="flex-1 min-w-0 rounded-xl border border-stone-200 dark:border-stone-700 bg-transparent px-3 py-2 text-sm"
                     value={key}
                     onChange={e =>
                       updateDraftAttributes(~index=attrIdx, ~key=?Some(ReactEvent.Form.target(e)["value"]))
                     }
-                    placeholder="Attribute key"
-                  />
-                  <input
-                    className="flex-1 rounded-xl border border-stone-200 dark:border-stone-700 bg-transparent px-3 py-2 text-sm"
-                    type_="text"
-                    value={value}
-                    onChange={e =>
-                      updateDraftAttributes(~index=attrIdx, ~value=?Some(ReactEvent.Form.target(e)["value"]))
-                    }
-                    placeholder="Attribute value"
-                  />
+                  >
+                    <option value="">{React.string("Select attribute")}</option>
+                    {featuresData.features->Array.map(f =>
+                      <option key={f.key} value={f.key}>{React.string(f.value)}</option>
+                    )->React.array}
+                    {if key != "" && !(featuresData.features->Array.some(f => f.key == key)) {
+                      <option value={key}>{React.string(key)}</option>
+                    } else {
+                      React.null
+                    }}
+                  </select>
+                  {switch featureDef {
+                  | Some(def) if def.enum =>
+                    let possibleValues = featuresData.values->Array.filter(v => v.feature == key)
+                    <select
+                      className="flex-1 min-w-0 rounded-xl border border-stone-200 dark:border-stone-700 bg-transparent px-3 py-2 text-sm"
+                      value={value}
+                      onChange={e =>
+                        updateDraftAttributes(~index=attrIdx, ~value=?Some(ReactEvent.Form.target(e)["value"]))
+                      }
+                    >
+                      <option value="">{React.string("Select value")}</option>
+                      {possibleValues->Array.map(v =>
+                        <option key={v.key} value={v.key}>{React.string(v.value)}</option>
+                      )->React.array}
+                      {if value != "" && !(possibleValues->Array.some(v => v.key == value)) {
+                        <option value={value}>{React.string(value)}</option>
+                      } else {
+                        React.null
+                      }}
+                    </select>
+                  | _ =>
+                    <input
+                      className="flex-1 min-w-0 rounded-xl border border-stone-200 dark:border-stone-700 bg-transparent px-3 py-2 text-sm"
+                      type_="text"
+                      value={value}
+                      onChange={e =>
+                        updateDraftAttributes(~index=attrIdx, ~value=?Some(ReactEvent.Form.target(e)["value"]))
+                      }
+                      placeholder="Attribute value"
+                    />
+                  }}
                   <button
-                    className="w-10 h-10 rounded-xl bg-rose-100 dark:bg-rose-900/40 text-rose-700 dark:text-rose-300"
+                    className="w-10 h-10 shrink-0 rounded-xl bg-rose-100 dark:bg-rose-900/40 text-rose-700 dark:text-rose-300"
                     onClick={_ => removeDraftAttribute(attrIdx)}
                     ariaLabel="Remove attribute"
                   >
@@ -498,20 +557,45 @@ let make = (
 
           <div className="mt-4 flex flex-col gap-2">
             <div className="flex gap-2">
-              <input
-                className="flex-1 rounded-xl border border-stone-200 dark:border-stone-700 bg-transparent px-3 py-2 text-sm"
-                type_="text"
+              <select
+                className="flex-1 min-w-0 rounded-xl border border-stone-200 dark:border-stone-700 bg-transparent px-3 py-2 text-sm"
                 value={newAttrKey}
-                onChange={e => setNewAttrKey(_ => ReactEvent.Form.target(e)["value"])}
-                placeholder="New attribute key"
-              />
-              <input
-                className="flex-1 rounded-xl border border-stone-200 dark:border-stone-700 bg-transparent px-3 py-2 text-sm"
-                type_="text"
-                value={newAttrValue}
-                onChange={e => setNewAttrValue(_ => ReactEvent.Form.target(e)["value"])}
-                placeholder="New attribute value"
-              />
+                onChange={e => {
+                  let val = ReactEvent.Form.target(e)["value"]
+                  setNewAttrKey(_ => val)
+                  setNewAttrValue(_ => "")
+                }}
+              >
+                <option value="">{React.string("New attribute key")}</option>
+                {featuresData.features->Array.map(f =>
+                  <option key={f.key} value={f.key}>{React.string(f.value)}</option>
+                )->React.array}
+              </select>
+              {
+                let featureDef = featuresData.features->Array.find(f => f.key == newAttrKey)
+                switch featureDef {
+                | Some(def) if def.enum =>
+                  let possibleValues = featuresData.values->Array.filter(v => v.feature == newAttrKey)
+                  <select
+                    className="flex-1 min-w-0 rounded-xl border border-stone-200 dark:border-stone-700 bg-transparent px-3 py-2 text-sm"
+                    value={newAttrValue}
+                    onChange={e => setNewAttrValue(_ => ReactEvent.Form.target(e)["value"])}
+                  >
+                    <option value="">{React.string("New attribute value")}</option>
+                    {possibleValues->Array.map(v =>
+                      <option key={v.key} value={v.key}>{React.string(v.value)}</option>
+                    )->React.array}
+                  </select>
+                | _ =>
+                  <input
+                    className="flex-1 min-w-0 rounded-xl border border-stone-200 dark:border-stone-700 bg-transparent px-3 py-2 text-sm"
+                    type_="text"
+                    value={newAttrValue}
+                    onChange={e => setNewAttrValue(_ => ReactEvent.Form.target(e)["value"])}
+                    placeholder="New attribute value"
+                  />
+                }
+              }
             </div>
             <button
               className={
