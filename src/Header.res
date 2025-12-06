@@ -34,7 +34,7 @@ let make = (~collapsed, ~onClick, ~reference="Matthew 1", ~onNext=?, ~onPrev=?) 
         disabled={onPrev->Option.isNone}
         onClick={e => handleNavClick(e, onPrev)}
         onTouchEnd={stopPropagation}
-        className={"p-1 rounded-full transition-colors " ++ (
+        className={"w-9 h-9 rounded-full transition-colors flex items-center justify-center " ++ (
           onPrev->Option.isSome 
             ? "hover:bg-gray-100 dark:hover:bg-stone-800 text-gray-500 dark:text-gray-400" 
             : "text-gray-300 dark:text-stone-700 cursor-not-allowed"
@@ -53,7 +53,7 @@ let make = (~collapsed, ~onClick, ~reference="Matthew 1", ~onNext=?, ~onPrev=?) 
         disabled={onNext->Option.isNone}
         onClick={e => handleNavClick(e, onNext)}
         onTouchEnd={stopPropagation}
-        className={"p-1 rounded-full transition-colors " ++ (
+        className={"w-9 h-9 rounded-full transition-colors flex items-center justify-center " ++ (
           onNext->Option.isSome 
             ? "hover:bg-gray-100 dark:hover:bg-stone-800 text-gray-500 dark:text-gray-400" 
             : "text-gray-300 dark:text-stone-700 cursor-not-allowed"

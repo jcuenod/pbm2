@@ -38,7 +38,7 @@ let make = (~totalPages: int, ~currentPage: int, ~onPageChange: int => unit) => 
   let canGoLast = totalPages > 0 && currentPage < totalPages - 1
 
   let navButtonClass = enabled =>
-    "h-9 w-9 rounded-xl text-sm font-semibold transition-all active:scale-95 flex items-center justify-center border border-stone-200 dark:border-stone-700 " ++
+    "h-10 w-10 rounded text-sm font-semibold transition-all active:scale-95 flex items-center justify-center border border-stone-200 dark:border-stone-700 " ++
     if enabled {
       "bg-white text-stone-900 dark:bg-stone-800 dark:text-stone-100 hover:bg-stone-100 dark:hover:bg-stone-700"
     } else {
@@ -46,7 +46,7 @@ let make = (~totalPages: int, ~currentPage: int, ~onPageChange: int => unit) => 
     }
 
   let slotClass = isActive =>
-    "h-10 min-w-[2.75rem] rounded-xl text-sm font-semibold transition-all active:scale-95 flex items-center justify-center shadow-sm " ++
+    "h-10 min-w-[2.75rem] rounded text-sm font-semibold transition-all active:scale-95 flex items-center justify-center " ++
     if isActive {
       "bg-teal-600 text-white shadow-lg scale-105"
     } else {
@@ -54,7 +54,7 @@ let make = (~totalPages: int, ~currentPage: int, ~onPageChange: int => unit) => 
     }
 
   let placeholderClass =
-    "h-10 min-w-[2.75rem] rounded-xl text-sm font-semibold transition-all flex items-center justify-center border border-transparent opacity-0 cursor-default"
+    "h-10 min-w-[2.75rem] rounded text-sm font-semibold transition-all flex items-center justify-center border border-transparent opacity-0 cursor-default"
 
   <div className="flex items-center justify-center gap-2">
     <button

@@ -484,7 +484,7 @@ let make = (
             )}
           </button>
 
-          <div className="mt-4 space-y-3 max-h-[45vh] overflow-auto pr-1">
+          <div className="mt-4 space-y-3 max-h-[45vh] overflow-auto">
             {switch draft.attributes->Array.length {
             | 0 =>
               <div className="text-sm text-stone-600 dark:text-stone-300">
@@ -498,7 +498,7 @@ let make = (
 
                 <div key={`${key}-${attrIdx->Int.toString}`} className="flex items-center gap-2 w-full">
                   <select
-                    className="flex-1 min-w-0 border border-stone-200 dark:border-stone-700 bg-transparent px-3 py-2 text-sm"
+                    className="flex-1 min-w-0 h-10 border border-stone-200 dark:border-stone-700 bg-transparent px-3 py-2 text-sm"
                     value={key}
                     onChange={e =>
                       updateDraftAttributes(~index=attrIdx, ~key=?Some(ReactEvent.Form.target(e)["value"]))
@@ -518,7 +518,7 @@ let make = (
                   | Some(def) if def.enum =>
                     let possibleValues = featuresData.values->Array.filter(v => v.feature == key)
                     <select
-                      className="flex-1 min-w-0 border border-stone-200 dark:border-stone-700 bg-transparent px-3 py-2 text-sm"
+                      className="flex-1 min-w-0 h-10 border border-stone-200 dark:border-stone-700 bg-transparent px-3 py-2 text-sm"
                       value={value}
                       onChange={e =>
                         updateDraftAttributes(~index=attrIdx, ~value=?Some(ReactEvent.Form.target(e)["value"]))
@@ -536,7 +536,7 @@ let make = (
                     </select>
                   | _ =>
                     <input
-                      className="flex-1 min-w-0 border border-stone-200 dark:border-stone-700 bg-transparent px-3 py-2 text-sm"
+                      className="flex-1 min-w-0 h-10 border border-stone-200 dark:border-stone-700 bg-transparent px-3 py-2 text-sm"
                       type_="text"
                       value={value}
                       onChange={e =>
