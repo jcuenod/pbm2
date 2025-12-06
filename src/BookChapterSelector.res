@@ -18,36 +18,46 @@ let make = (~isOpen, ~onClose, ~currentBook, ~currentChapter, ~onSelect) => {
   let bookRows = BibleData.groupBooksByRow(filteredBooks)
   
   let handleTouchStart = e => {
-    let _touches = ReactEvent.Touch.touches(e)
-    let clientX = %raw(`_touches[0]?.clientX`)
-    let clientY = %raw(`_touches[0]?.clientY`)
+    let getTouchCoords = %raw(`(e) => {
+      const touch = e.touches[0];
+      return touch ? { x: touch.clientX, y: touch.clientY } : null;
+    }`)
     
-    switch (Nullable.toOption(clientX), Nullable.toOption(clientY)) {
-    | (Some(x), Some(y)) => touchStartPos.current = Some((x, y))
-    | _ => ()
+    let coords = getTouchCoords(e)
+    if coords !== Nullable.null {
+      let x: float = %raw(`coords.x`)
+      let y: float = %raw(`coords.y`)
+      touchStartPos.current = Some((x, y))
     }
   }
   
   let handleTouchEnd = (callback, e) => {
     if !handlingEvent.current {
-      let _changedTouches = ReactEvent.Touch.changedTouches(e)
-      let clientX = %raw(`_changedTouches[0]?.clientX`)
-      let clientY = %raw(`_changedTouches[0]?.clientY`)
+      let getTouchCoords = %raw(`(e) => {
+        const touch = e.changedTouches[0];
+        return touch ? { x: touch.clientX, y: touch.clientY } : null;
+      }`)
       
-      switch (touchStartPos.current, Nullable.toOption(clientX), Nullable.toOption(clientY)) {
-      | (Some((startX, startY)), Some(endX), Some(endY)) => {
-          let deltaX = Math.abs(endX -. startX)
-          let deltaY = Math.abs(endY -. startY)
-          
-          // Only trigger if movement is less than 10 pixels (not a scroll)
-          if deltaX < 10.0 && deltaY < 10.0 {
-            handlingEvent.current = true
-            ReactEvent.Touch.preventDefault(e)
-            callback()
-            let _ = setTimeout(() => handlingEvent.current = false, 300)
+      let coords = getTouchCoords(e)
+      
+      if coords !== Nullable.null && touchStartPos.current !== None {
+        switch touchStartPos.current {
+        | Some((startX, startY)) => {
+            let endX: float = %raw(`coords.x`)
+            let endY: float = %raw(`coords.y`)
+            let deltaX = Math.abs(endX -. startX)
+            let deltaY = Math.abs(endY -. startY)
+            
+            // Only trigger if movement is less than 10 pixels (not a scroll)
+            if deltaX < 10.0 && deltaY < 10.0 {
+              handlingEvent.current = true
+              ReactEvent.Touch.preventDefault(e)
+              callback()
+              let _ = setTimeout(() => handlingEvent.current = false, 300)
+            }
           }
+        | None => ()
         }
-      | _ => ()
       }
       touchStartPos.current = None
     }
