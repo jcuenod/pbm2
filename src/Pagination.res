@@ -63,7 +63,7 @@ let make = (~totalPages: int, ~currentPage: int, ~onPageChange: int => unit) => 
       onClick={_ => goToFirst()}
       ariaLabel="Go to first page"
     >
-      {React.string("<<")}
+      {React.string("«")}
     </button>
     {pageSlots
     ->Belt.Array.mapWithIndex((idx, slot) =>
@@ -90,7 +90,7 @@ let make = (~totalPages: int, ~currentPage: int, ~onPageChange: int => unit) => 
       onClick={_ => goToLast()}
       ariaLabel="Go to last page"
     >
-      {React.string(">>")}
+      {React.string("»")}
     </button>
   </div>
 }

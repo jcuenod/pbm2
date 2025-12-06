@@ -40,6 +40,25 @@ let make = (
   let scrollContainerRef = React.useRef(Nullable.null)
   let scrollAdjustmentRef = React.useRef((None: option<scrollMetrics>))
   let isInitialLoadRef = React.useRef(false)
+  let (scrollToChapterAfterLoad, setScrollToChapterAfterLoad) = React.useState(() => None)
+
+  let isProgrammaticScrollRef = React.useRef(false)
+
+  let scrollToChapter = (chapterNum: int) => {
+    switch scrollContainerRef.current->Nullable.toOption {
+    | Some(container) => {
+        let element = container->Obj.magic
+        let chapterElement = element["querySelector"](`#chapter-${chapterNum->Int.toString}`)
+        if chapterElement !== Nullable.null->Obj.magic {
+           isProgrammaticScrollRef.current = true
+           let _ = chapterElement["scrollIntoView"]({"behavior": "smooth"})
+           // Reset after a delay to allow smooth scroll to complete
+           let _ = setTimeout(() => { isProgrammaticScrollRef.current = false }, 1000)
+        }
+      }
+    | None => ()
+    }
+  }
 
   // Refs to avoid stale closures in onScroll
   let chaptersRef = React.useRef([])
@@ -103,6 +122,22 @@ let make = (
     None
   }, [loadingNext])
 
+  React.useEffect1(() => {
+    switch scrollToChapterAfterLoad {
+    | Some(chapter) => {
+        // Check if chapter exists in DOM
+        // If yes, scroll and clear state
+        // We use a small timeout to ensure DOM is ready
+        let _ = setTimeout(() => {
+          scrollToChapter(chapter)
+          setScrollToChapterAfterLoad(_ => None)
+        }, 100)
+      }
+    | None => ()
+    }
+    None
+  }, [chapters])
+
   let maxChaptersForBook = React.useMemo1(() => {
     BibleData.books
     ->Array.find(b => b.id == currentBook)
@@ -132,21 +167,23 @@ let make = (
     let dy = st - lastY.current
     lastY.current = st
     
-    // Accumulate scroll distance for smoother header behavior
-    // Reset accumulator when direction changes
-    if (dy > 0 && accumulatedDy.current < 0) || (dy < 0 && accumulatedDy.current > 0) {
-      accumulatedDy.current = dy
-    } else {
-      accumulatedDy.current = accumulatedDy.current + dy
-    }
-    
-    // Use larger threshold (50px) for more stable header behavior
-    if accumulatedDy.current > 50 {
-      setCollapsed(_ => true)
-      accumulatedDy.current = 0
-    } else if accumulatedDy.current < -50 {
-      setCollapsed(_ => false)
-      accumulatedDy.current = 0
+    if !isProgrammaticScrollRef.current {
+      // Accumulate scroll distance for smoother header behavior
+      // Reset accumulator when direction changes
+      if (dy > 0 && accumulatedDy.current < 0) || (dy < 0 && accumulatedDy.current > 0) {
+        accumulatedDy.current = dy
+      } else {
+        accumulatedDy.current = accumulatedDy.current + dy
+      }
+      
+      // Use larger threshold (50px) for more stable header behavior
+      if accumulatedDy.current > 50 {
+        setCollapsed(_ => true)
+        accumulatedDy.current = 0
+      } else if accumulatedDy.current < -50 {
+        setCollapsed(_ => false)
+        accumulatedDy.current = 0
+      }
     }
 
     let target = e->JsxEvent.UI.target
@@ -288,6 +325,83 @@ let make = (
       setShowSelector(_ => true)
     } else {
       setCollapsed(_ => false)
+    }
+  }
+
+  let handleNextChapter = () => {
+    let nextChapter = visibleChapter + 1
+    if nextChapter <= maxChaptersForBook {
+      if chapters->Array.some(c => c.chapter == nextChapter) {
+        scrollToChapter(nextChapter)
+      } else {
+        setLoadingNext(_ => true)
+        loadingNextRef.current = true
+        let bookAtStart = currentBookRef.current
+        let fetchData = async () => {
+          let result = await fetchChapterData(currentBook, nextChapter)
+          if bookAtStart == currentBookRef.current {
+            switch result {
+            | Ok(data) => {
+                setChapters(prev => {
+                  if prev->Array.some(c => c.chapter == nextChapter) {
+                    prev
+                  } else {
+                    Array.concat(prev, [{chapter: nextChapter, data}])
+                  }
+                })
+                setNextLoadFailed(_ => false)
+                setScrollToChapterAfterLoad(_ => Some(nextChapter))
+              }
+            | Error(_) => {
+                setLoadingNext(_ => false)
+                setNextLoadFailed(_ => true)
+              }
+            }
+          } else {
+            setLoadingNext(_ => false)
+          }
+        }
+        let _ = fetchData()
+      }
+    }
+  }
+
+  let handlePrevChapter = () => {
+    let prevChapter = visibleChapter - 1
+    if prevChapter >= 1 {
+      if chapters->Array.some(c => c.chapter == prevChapter) {
+        scrollToChapter(prevChapter)
+      } else {
+        setLoadingPrev(_ => true)
+        loadingPrevRef.current = true
+        let bookAtStart = currentBookRef.current
+        let fetchData = async () => {
+          let result = await fetchChapterData(currentBook, prevChapter)
+          if bookAtStart == currentBookRef.current {
+            switch result {
+            | Ok(data) => {
+                // Important: Do NOT set scrollAdjustmentRef here because we want to jump to the new chapter
+                setChapters(prev => {
+                  if prev->Array.some(c => c.chapter == prevChapter) {
+                    prev
+                  } else {
+                    Array.concat([{chapter: prevChapter, data}], prev)
+                  }
+                })
+                setPrevLoadFailed(_ => false)
+                setScrollToChapterAfterLoad(_ => Some(prevChapter))
+              }
+            | Error(_) => {
+                setLoadingPrev(_ => false)
+                setPrevLoadFailed(_ => true)
+              }
+            }
+          } else {
+            setLoadingPrev(_ => false)
+          }
+        }
+        let _ = fetchData()
+      }
     }
   }
 
@@ -483,7 +597,13 @@ let make = (
   }
 
   <div className="flex flex-col h-full">
-    <Header collapsed={collapsed} onClick={handleHeaderClick} reference={reference} />
+    <Header 
+      collapsed={collapsed} 
+      onClick={handleHeaderClick} 
+      reference={reference}
+      onNext=?{visibleChapter < maxChaptersForBook ? Some(handleNextChapter) : None}
+      onPrev=?{visibleChapter > 1 ? Some(handlePrevChapter) : None}
+    />
     <BookChapterSelector
       isOpen={showSelector}
       onClose={() => setShowSelector(_ => false)}
