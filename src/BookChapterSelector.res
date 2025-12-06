@@ -104,8 +104,21 @@ let make = (~isOpen, ~onClose, ~currentBook, ~currentChapter, ~onSelect) => {
             value={searchText}
             onChange={e => setSearchText(ReactEvent.Form.target(e)["value"])}
             placeholder="Search books..."
-            className="w-full pl-10 pr-4 py-2 border border-stone-300 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 focus:outline-none focus:border-teal-600 transition-colors"
+            className="w-full pl-10 pr-10 py-2 border border-stone-300 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 focus:outline-none focus:border-teal-600 transition-colors"
           />
+          {searchText != "" ? 
+            <button
+              type_="button"
+              onClick={e => handleClick(() => setSearchText(_ => ""), e)}
+              onTouchStart={handleTouchStart}
+              onTouchEnd={e => handleTouchEnd(() => setSearchText(_ => ""), e)}
+              className="absolute inset-y-0 right-2 flex items-center p-1 hover:bg-stone-200 dark:hover:bg-stone-700 rounded transition-colors active:scale-95"
+              ariaLabel="Clear search">
+              <svg className="w-4 h-4 text-stone-500 dark:text-stone-400" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+              </svg>
+            </button>
+          : React.null}
         </div>
         <button
           type_="button"
