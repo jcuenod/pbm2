@@ -36,8 +36,10 @@ let make = (
   let (nextLoadFailed, setNextLoadFailed) = React.useState(() => false)
   let (visibleChapter, setVisibleChapter) = React.useState(() => 1)
   let lastY = React.useRef(0)
+  let accumulatedDy = React.useRef(0) // Track accumulated scroll for smoother header behavior
   let scrollContainerRef = React.useRef(Nullable.null)
   let scrollAdjustmentRef = React.useRef((None: option<scrollMetrics>))
+  let isInitialLoadRef = React.useRef(false)
 
   // Refs to avoid stale closures in onScroll
   let chaptersRef = React.useRef([])
@@ -129,10 +131,22 @@ let make = (
     let st = getScrollTop(e)
     let dy = st - lastY.current
     lastY.current = st
-    if dy > 5 {
+    
+    // Accumulate scroll distance for smoother header behavior
+    // Reset accumulator when direction changes
+    if (dy > 0 && accumulatedDy.current < 0) || (dy < 0 && accumulatedDy.current > 0) {
+      accumulatedDy.current = dy
+    } else {
+      accumulatedDy.current = accumulatedDy.current + dy
+    }
+    
+    // Use larger threshold (50px) for more stable header behavior
+    if accumulatedDy.current > 50 {
       setCollapsed(_ => true)
-    } else if dy < -5 {
+      accumulatedDy.current = 0
+    } else if accumulatedDy.current < -50 {
       setCollapsed(_ => false)
+      accumulatedDy.current = 0
     }
 
     let target = e->JsxEvent.UI.target
@@ -145,32 +159,35 @@ let make = (
 
     let visibleChapterNum = ref(visibleChapter)
 
-    // If we are at the very top (or overscrolled), force the first chapter
-    if target["scrollTop"] <= 50 {
-      switch chaptersRef.current[0] {
-      | Some(c) => visibleChapterNum := c.chapter
-      | None => ()
-      }
-    } else {
-      sectionsArray->Array.forEach(section => {
-        let heading = section["querySelector"](".chapter-heading")
-        if heading !== Nullable.null->Obj.magic {
-          let rect = heading["getBoundingClientRect"]()
+    // Skip visible chapter detection during initial load to prevent race conditions
+    if !isInitialLoadRef.current {
+      // If we are at the very top (or overscrolled), force the first chapter
+      if target["scrollTop"] <= 50 {
+        switch chaptersRef.current[0] {
+        | Some(c) => visibleChapterNum := c.chapter
+        | None => ()
+        }
+      } else {
+        sectionsArray->Array.forEach(section => {
+          let heading = section["querySelector"](".chapter-heading")
+          if heading !== Nullable.null->Obj.magic {
+            let rect = heading["getBoundingClientRect"]()
 
-          // Threshold needs to be > 64 (header 48 + padding 16) to catch the first chapter at the top
-          // Increased to 150 to account for potential margins and ensure we catch the chapter even if it's pushed down slightly
-          if rect["top"] <= 150. {
-            let sectionId = section["id"]
-            let chapterStr = sectionId->String.replace("chapter-", "")
-            switch chapterStr->Int.fromString {
-            | Some(num) => visibleChapterNum := num
-            | None => ()
+            // Threshold needs to be > 64 (header 48 + padding 16) to catch the first chapter at the top
+            // Increased to 150 to account for potential margins and ensure we catch the chapter even if it's pushed down slightly
+            if rect["top"] <= 150. {
+              let sectionId = section["id"]
+              let chapterStr = sectionId->String.replace("chapter-", "")
+              switch chapterStr->Int.fromString {
+              | Some(num) => visibleChapterNum := num
+              | None => ()
+              }
             }
           }
-        }
-      })
+        })
+      }
+      setVisibleChapter(_ => visibleChapterNum.contents)
     }
-    setVisibleChapter(_ => visibleChapterNum.contents)
 
     // Infinite scroll
     let scrollTop = target["scrollTop"]
@@ -179,7 +196,8 @@ let make = (
 
     let currentChapters = chaptersRef.current
 
-    if currentChapters->Array.length > 0 {
+    // Skip infinite scroll during initial load
+    if currentChapters->Array.length > 0 && !isInitialLoadRef.current {
       switch (currentChapters[0], currentChapters[currentChapters->Array.length - 1]) {
       | (Some(firstChapter), Some(lastChapter)) => {
           // Load previous
@@ -276,6 +294,7 @@ let make = (
   let handleBookChapterSelect = (book: BibleData.book, chapter: int) => {
     setCurrentBook(_ => book.id)
     setCurrentChapter(_ => chapter)
+    setVisibleChapter(_ => chapter) // Reset visible chapter immediately to prevent stale display
     setPrevLoadFailed(_ => false)
     setNextLoadFailed(_ => false)
     setChapters(_ => [])
@@ -358,6 +377,7 @@ let make = (
   React.useEffect4(() => {
     let cancelled = ref(false)
     if selectedModuleIds->Array.length > 0 && availableModules->Array.length > 0 {
+      isInitialLoadRef.current = true
       setLoading(_ => true)
       setError(_ => None)
       setVisibleChapter(_ => currentChapter)
@@ -388,7 +408,12 @@ let make = (
                 }
               }
 
-              if currentChapter > 1 {
+              if currentChapter <= 1 {
+                // No previous chapter to load, clear initial load flag
+                let _ = setTimeout(() => {
+                  isInitialLoadRef.current = false
+                }, 100)
+              } else {
                 let prevResult = await fetchChapterData(currentBook, currentChapter - 1)
                 if !cancelled.contents {
                   switch prevResult {
@@ -418,18 +443,25 @@ let make = (
                                   "block": "start",
                                 })
                               }
+                              // Clear initial load flag after scroll adjustment
+                              let _ = setTimeout(() => {
+                                isInitialLoadRef.current = false
+                              }, 100)
                             }
-                          | None => ()
+                          | None => isInitialLoadRef.current = false
                           }
+                        } else {
+                          isInitialLoadRef.current = false
                         }
                       }, 0)
                     }
-                  | _ => ()
+                  | _ => isInitialLoadRef.current = false
                   }
                 }
               }
             }
           | Error(err) => {
+              isInitialLoadRef.current = false
               setError(_ => Some(err))
               setLoading(_ => false)
             }
