@@ -85,15 +85,17 @@ let make = (
   let (editingTermIndex, setEditingTermIndex) = React.useState(() => None)
   let (editingDraft, setEditingDraft) = React.useState(() => None)
   let (isClosing, setIsClosing) = React.useState(() => false)
+  let (showAddAttrDialog, setShowAddAttrDialog) = React.useState(() => false)
   let (newAttrKey, setNewAttrKey) = React.useState(() => "")
   let (newAttrValue, setNewAttrValue) = React.useState(() => "")
   let pageSize = 20
 
   let clearEditingState = () => {
     setIsClosing(_ => true)
-    let _ = Js.Global.setTimeout(() => {
+    let _ = setTimeout(() => {
       setEditingTermIndex(_ => None)
       setEditingDraft(_ => None)
+      setShowAddAttrDialog(_ => false)
       setNewAttrKey(_ => "")
       setNewAttrValue(_ => "")
       setIsClosing(_ => false)
@@ -105,6 +107,7 @@ let make = (
     | Some(term) => {
         setEditingTermIndex(_ => Some(idx))
         setEditingDraft(_ => Some(term))
+        setShowAddAttrDialog(_ => false)
         setNewAttrKey(_ => "")
         setNewAttrValue(_ => "")
       }
@@ -170,6 +173,7 @@ let make = (
       )
       setNewAttrKey(_ => "")
       setNewAttrValue(_ => "")
+      setShowAddAttrDialog(_ => false)
     }
   }
 
@@ -304,13 +308,13 @@ let make = (
 
                 <div
                   key={idx->Int.toString}
-                  className="group flex items-center bg-stone-100 dark:bg-stone-800 rounded-lg border border-stone-200 dark:border-stone-700 overflow-hidden transition-all active:scale-95">
+                  className="group flex items-center bg-stone-100 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 overflow-hidden transition-all active:scale-95">
                   <button
                     className="px-3 py-2 text-sm font-medium text-stone-900 dark:text-stone-100 hover:bg-stone-200 dark:hover:bg-stone-700 flex items-center gap-2"
                     onClick={_ => startEditingTerm(idx)}>
                     {if term.inverted {
                       <span
-                        className="text-xs font-bold text-rose-600 bg-rose-100 dark:bg-rose-900/30 px-1.5 py-0.5 rounded">
+                        className="text-xs font-bold text-rose-600 bg-rose-100 dark:bg-rose-900/30 px-1.5 py-0.5">
                         {React.string("NOT")}
                       </span>
                     } else {
@@ -384,7 +388,7 @@ let make = (
                   let referenceLabel = formatReference(baseMatch)
                   <div
                     key={rowIdx->Int.toString}
-                    className="border border-gray-200 dark:border-stone-800 rounded-lg p-4"
+                    className="border border-gray-200 dark:border-stone-800 p-4"
                   >
                     {switch referenceLabel {
                     | Some(label) =>
@@ -443,9 +447,10 @@ let make = (
     | (Some(idx), Some(draft)) =>
       let animationClass = isClosing ? "animate-slide-down" : "animate-slide-up"
       let backdropClass = isClosing ? "animate-fade-out" : "animate-fade-in"
+      <React.Fragment>
       <div className="fixed inset-0 z-40 flex items-end">
         <div className={"absolute inset-0 bg-black/40 " ++ backdropClass} onClick={_ => clearEditingState()} />
-        <div className={"relative w-full bg-white dark:bg-stone-900 rounded-t-3xl p-5 shadow-2xl max-h-[85vh] overflow-hidden " ++ animationClass}>
+        <div className={"relative w-full bg-white dark:bg-stone-900 p-5 shadow-2xl max-h-[85vh] overflow-hidden " ++ animationClass}>
           <div className="flex items-center justify-between gap-3">
             <div>
               <div className="text-xs uppercase tracking-wide text-stone-500 dark:text-stone-400">
@@ -456,7 +461,7 @@ let make = (
               </div>
             </div>
             <button
-              className="w-10 h-10 rounded-xl bg-stone-100 dark:bg-stone-800 text-stone-500 dark:text-stone-300 flex items-center justify-center"
+              className="w-10 h-10 rounded-full bg-stone-100 dark:bg-stone-800 text-stone-500 dark:text-stone-300 flex items-center justify-center"
               onClick={_ => clearEditingState()}
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -467,7 +472,7 @@ let make = (
 
           <button
             className={
-              "mt-4 w-full px-4 py-3 rounded-2xl text-sm font-semibold text-center transition-colors " ++
+              "mt-4 w-full px-4 py-3 text-sm font-semibold text-center transition-colors " ++
               (draft.inverted
                 ? "bg-rose-600 text-white"
                 : "bg-stone-100 dark:bg-stone-800 text-stone-800 dark:text-stone-100")
@@ -493,7 +498,7 @@ let make = (
 
                 <div key={`${key}-${attrIdx->Int.toString}`} className="flex items-center gap-2 w-full">
                   <select
-                    className="flex-1 min-w-0 rounded-xl border border-stone-200 dark:border-stone-700 bg-transparent px-3 py-2 text-sm"
+                    className="flex-1 min-w-0 border border-stone-200 dark:border-stone-700 bg-transparent px-3 py-2 text-sm"
                     value={key}
                     onChange={e =>
                       updateDraftAttributes(~index=attrIdx, ~key=?Some(ReactEvent.Form.target(e)["value"]))
@@ -513,7 +518,7 @@ let make = (
                   | Some(def) if def.enum =>
                     let possibleValues = featuresData.values->Array.filter(v => v.feature == key)
                     <select
-                      className="flex-1 min-w-0 rounded-xl border border-stone-200 dark:border-stone-700 bg-transparent px-3 py-2 text-sm"
+                      className="flex-1 min-w-0 border border-stone-200 dark:border-stone-700 bg-transparent px-3 py-2 text-sm"
                       value={value}
                       onChange={e =>
                         updateDraftAttributes(~index=attrIdx, ~value=?Some(ReactEvent.Form.target(e)["value"]))
@@ -531,7 +536,7 @@ let make = (
                     </select>
                   | _ =>
                     <input
-                      className="flex-1 min-w-0 rounded-xl border border-stone-200 dark:border-stone-700 bg-transparent px-3 py-2 text-sm"
+                      className="flex-1 min-w-0 border border-stone-200 dark:border-stone-700 bg-transparent px-3 py-2 text-sm"
                       type_="text"
                       value={value}
                       onChange={e =>
@@ -541,7 +546,7 @@ let make = (
                     />
                   }}
                   <button
-                    className="w-10 h-10 shrink-0 rounded-xl bg-rose-100 dark:bg-rose-900/40 text-rose-700 dark:text-rose-300"
+                    className="w-10 h-10 flex items-center justify-center shrink-0 bg-rose-100 dark:bg-rose-900/40 text-rose-700 dark:text-rose-300"
                     onClick={_ => removeDraftAttribute(attrIdx)}
                     ariaLabel="Remove attribute"
                   >
@@ -555,57 +560,10 @@ let make = (
             }}
           </div>
 
-          <div className="mt-4 flex flex-col gap-2">
-            <div className="flex gap-2">
-              <select
-                className="flex-1 min-w-0 rounded-xl border border-stone-200 dark:border-stone-700 bg-transparent px-3 py-2 text-sm"
-                value={newAttrKey}
-                onChange={e => {
-                  let val = ReactEvent.Form.target(e)["value"]
-                  setNewAttrKey(_ => val)
-                  setNewAttrValue(_ => "")
-                }}
-              >
-                <option value="">{React.string("New attribute key")}</option>
-                {featuresData.features->Array.map(f =>
-                  <option key={f.key} value={f.key}>{React.string(f.value)}</option>
-                )->React.array}
-              </select>
-              {
-                let featureDef = featuresData.features->Array.find(f => f.key == newAttrKey)
-                switch featureDef {
-                | Some(def) if def.enum =>
-                  let possibleValues = featuresData.values->Array.filter(v => v.feature == newAttrKey)
-                  <select
-                    className="flex-1 min-w-0 rounded-xl border border-stone-200 dark:border-stone-700 bg-transparent px-3 py-2 text-sm"
-                    value={newAttrValue}
-                    onChange={e => setNewAttrValue(_ => ReactEvent.Form.target(e)["value"])}
-                  >
-                    <option value="">{React.string("New attribute value")}</option>
-                    {possibleValues->Array.map(v =>
-                      <option key={v.key} value={v.key}>{React.string(v.value)}</option>
-                    )->React.array}
-                  </select>
-                | _ =>
-                  <input
-                    className="flex-1 min-w-0 rounded-xl border border-stone-200 dark:border-stone-700 bg-transparent px-3 py-2 text-sm"
-                    type_="text"
-                    value={newAttrValue}
-                    onChange={e => setNewAttrValue(_ => ReactEvent.Form.target(e)["value"])}
-                    placeholder="New attribute value"
-                  />
-                }
-              }
-            </div>
+          <div className="mt-4">
             <button
-              className={
-                "h-11 rounded-2xl font-semibold text-sm transition-all active:scale-95 " ++
-                (canAddNewAttr
-                  ? "bg-stone-900 text-white dark:bg-stone-100 dark:text-stone-900"
-                  : "bg-stone-200 dark:bg-stone-800 text-stone-500 cursor-not-allowed")
-              }
-              disabled={!canAddNewAttr}
-              onClick={_ => addDraftAttribute()}
+              className="w-full h-11 bg-stone-900 text-white dark:bg-stone-100 dark:text-stone-900 font-semibold text-sm transition-all active:scale-95"
+              onClick={_ => setShowAddAttrDialog(_ => true)}
             >
               {React.string("Add attribute")}
             </button>
@@ -613,14 +571,14 @@ let make = (
 
           <div className="mt-5 flex gap-3">
             <button
-              className="flex-1 h-12 rounded-2xl border border-stone-300 dark:border-stone-700 text-stone-700 dark:text-stone-200 font-semibold"
+              className="flex-1 h-12 border border-stone-300 dark:border-stone-700 text-stone-700 dark:text-stone-200 font-semibold"
               onClick={_ => clearEditingState()}
             >
               {React.string("Cancel")}
             </button>
             <button
               className={
-                "flex-1 h-12 rounded-2xl font-semibold text-white transition-all active:scale-95 " ++
+                "flex-1 h-12 font-semibold text-white transition-all active:scale-95 " ++
                 (draftIsValid
                   ? "bg-teal-600 hover:bg-teal-700"
                   : "bg-teal-300 cursor-not-allowed")
@@ -633,6 +591,120 @@ let make = (
           </div>
         </div>
       </div>
+
+      {if showAddAttrDialog {
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/60" onClick={_ => {
+            setShowAddAttrDialog(_ => false)
+            setNewAttrKey(_ => "")
+            setNewAttrValue(_ => "")
+          }} />
+          <div className="relative bg-white dark:bg-stone-900 p-6 shadow-2xl max-w-md w-full">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-stone-900 dark:text-stone-100">
+                {React.string("Add Attribute")}
+              </h3>
+              <button
+                className="w-8 h-8 rounded-full bg-stone-100 dark:bg-stone-800 text-stone-500 dark:text-stone-300 flex items-center justify-center"
+                onClick={_ => {
+                  setShowAddAttrDialog(_ => false)
+                  setNewAttrKey(_ => "")
+                  setNewAttrValue(_ => "")
+                }}
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <label className="block text-sm font-medium text-stone-700 dark:text-stone-300 mb-1">
+                  {React.string("Attribute Key")}
+                </label>
+                <select
+                  className="w-full border border-stone-200 dark:border-stone-700 bg-transparent px-3 py-2 text-sm"
+                  value={newAttrKey}
+                  onChange={e => {
+                    let val = ReactEvent.Form.target(e)["value"]
+                    setNewAttrKey(_ => val)
+                    setNewAttrValue(_ => "")
+                  }}
+                >
+                  <option value="">{React.string("Select attribute")}</option>
+                  {featuresData.features->Array.map(f =>
+                    <option key={f.key} value={f.key}>{React.string(f.value)}</option>
+                  )->React.array}
+                </select>
+              </div>
+
+              {if newAttrKey != "" {
+                <div>
+                  <label className="block text-sm font-medium text-stone-700 dark:text-stone-300 mb-1">
+                    {React.string("Attribute Value")}
+                  </label>
+                  {
+                    let featureDef = featuresData.features->Array.find(f => f.key == newAttrKey)
+                    switch featureDef {
+                    | Some(def) if def.enum =>
+                      let possibleValues = featuresData.values->Array.filter(v => v.feature == newAttrKey)
+                      <select
+                        className="w-full border border-stone-200 dark:border-stone-700 bg-transparent px-3 py-2 text-sm"
+                        value={newAttrValue}
+                        onChange={e => setNewAttrValue(_ => ReactEvent.Form.target(e)["value"])}
+                      >
+                        <option value="">{React.string("Select value")}</option>
+                        {possibleValues->Array.map(v =>
+                          <option key={v.key} value={v.key}>{React.string(v.value)}</option>
+                        )->React.array}
+                      </select>
+                    | _ =>
+                      <input
+                        className="w-full border border-stone-200 dark:border-stone-700 bg-transparent px-3 py-2 text-sm"
+                        type_="text"
+                        value={newAttrValue}
+                        onChange={e => setNewAttrValue(_ => ReactEvent.Form.target(e)["value"])}
+                        placeholder="Enter value"
+                      />
+                    }
+                  }
+                </div>
+              } else {
+                React.null
+              }}
+            </div>
+
+            <div className="mt-6 flex gap-3">
+              <button
+                className="flex-1 h-10 border border-stone-300 dark:border-stone-700 text-stone-700 dark:text-stone-200 font-semibold text-sm"
+                onClick={_ => {
+                  setShowAddAttrDialog(_ => false)
+                  setNewAttrKey(_ => "")
+                  setNewAttrValue(_ => "")
+                }}
+              >
+                {React.string("Cancel")}
+              </button>
+              <button
+                className={
+                  "flex-1 h-10 font-semibold text-sm text-white transition-all active:scale-95 " ++
+                  (canAddNewAttr
+                    ? "bg-teal-600 hover:bg-teal-700"
+                    : "bg-teal-300 cursor-not-allowed")
+                }
+                disabled={!canAddNewAttr}
+                onClick={_ => addDraftAttribute()}
+              >
+                {React.string("Confirm")}
+              </button>
+            </div>
+          </div>
+        </div>
+      } else {
+        React.null
+      }}
+      </React.Fragment>
     | _ => React.null
     }}
   </div>
