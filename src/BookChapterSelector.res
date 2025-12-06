@@ -2,6 +2,7 @@
 let make = (~isOpen, ~onClose, ~currentBook, ~currentChapter, ~onSelect) => {
   let (searchText, setSearchText) = React.useState(() => "")
   let (expandedBookId, setExpandedBookId) = React.useState(() => None)
+  let touchStartPos = React.useRef(None)
   let handlingEvent = React.useRef(false)
 
   let filteredBooks = if searchText == "" {
@@ -16,10 +17,46 @@ let make = (~isOpen, ~onClose, ~currentBook, ~currentChapter, ~onSelect) => {
 
   let bookRows = BibleData.groupBooksByRow(filteredBooks)
   
-  let withEventGuard = (callback, e) => {
+  let handleTouchStart = e => {
+    let _touches = ReactEvent.Touch.touches(e)
+    let clientX = %raw(`_touches[0]?.clientX`)
+    let clientY = %raw(`_touches[0]?.clientY`)
+    
+    switch (Nullable.toOption(clientX), Nullable.toOption(clientY)) {
+    | (Some(x), Some(y)) => touchStartPos.current = Some((x, y))
+    | _ => ()
+    }
+  }
+  
+  let handleTouchEnd = (callback, e) => {
+    if !handlingEvent.current {
+      let _changedTouches = ReactEvent.Touch.changedTouches(e)
+      let clientX = %raw(`_changedTouches[0]?.clientX`)
+      let clientY = %raw(`_changedTouches[0]?.clientY`)
+      
+      switch (touchStartPos.current, Nullable.toOption(clientX), Nullable.toOption(clientY)) {
+      | (Some((startX, startY)), Some(endX), Some(endY)) => {
+          let deltaX = Math.abs(endX -. startX)
+          let deltaY = Math.abs(endY -. startY)
+          
+          // Only trigger if movement is less than 10 pixels (not a scroll)
+          if deltaX < 10.0 && deltaY < 10.0 {
+            handlingEvent.current = true
+            ReactEvent.Touch.preventDefault(e)
+            callback()
+            let _ = setTimeout(() => handlingEvent.current = false, 300)
+          }
+        }
+      | _ => ()
+      }
+      touchStartPos.current = None
+    }
+  }
+  
+  let handleClick = (callback, e) => {
     if !handlingEvent.current {
       handlingEvent.current = true
-      ReactEvent.Synthetic.stopPropagation(e)
+      ReactEvent.Mouse.stopPropagation(e)
       callback()
       let _ = setTimeout(() => handlingEvent.current = false, 300)
     }
@@ -62,8 +99,9 @@ let make = (~isOpen, ~onClose, ~currentBook, ~currentChapter, ~onSelect) => {
         </div>
         <button
           type_="button"
-          onClick={e => withEventGuard(onClose, e)}
-          onTouchEnd={e => withEventGuard(onClose, e)}
+          onClick={e => handleClick(onClose, e)}
+          onTouchStart={handleTouchStart}
+          onTouchEnd={e => handleTouchEnd(onClose, e)}
           className="p-2 hover:bg-stone-100 dark:hover:bg-stone-800 rounded-lg transition-colors active:scale-95"
           ariaLabel="Close">
           <svg className="w-6 h-6 text-stone-500 dark:text-stone-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -122,8 +160,9 @@ let make = (~isOpen, ~onClose, ~currentBook, ~currentChapter, ~onSelect) => {
                 <button
                   type_="button"
                   key={book.id}
-                  onClick={e => withEventGuard(() => handleBookClick(book.id), e)}
-                  onTouchEnd={e => withEventGuard(() => handleBookClick(book.id), e)}
+                  onClick={e => handleClick(() => handleBookClick(book.id), e)}
+                  onTouchStart={handleTouchStart}
+                  onTouchEnd={e => handleTouchEnd(() => handleBookClick(book.id), e)}
                   className={
                     "relative bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-900 dark:text-stone-100 " ++
                     "px-3 font-semibold text-sm transition-all duration-200 active:scale-95 " ++
@@ -156,8 +195,9 @@ let make = (~isOpen, ~onClose, ~currentBook, ~currentChapter, ~onSelect) => {
                       <button
                         type_="button"
                         key={chapter->Int.toString}
-                        onClick={e => withEventGuard(() => handleChapterClick(book, chapter), e)}
-                        onTouchEnd={e => withEventGuard(() => handleChapterClick(book, chapter), e)}
+                        onClick={e => handleClick(() => handleChapterClick(book, chapter), e)}
+                        onTouchStart={handleTouchStart}
+                        onTouchEnd={e => handleTouchEnd(() => handleChapterClick(book, chapter), e)}
                         className={
                           (isSelected 
                             ? "bg-teal-600 text-white scale-105" 
