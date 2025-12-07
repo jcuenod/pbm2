@@ -122,7 +122,8 @@ let fetchText = async (modules: string, reference: string): result<textEndpointR
           // Parse the JSON into our types
           let result = arr->Array.map(innerArr => {
             switch JSON.Decode.array(innerArr) {
-            | Some(matches) => matches->Array.map(matchJson => {
+            | Some(matches) =>
+              matches->Array.map(matchJson => {
                 let obj = JSON.Decode.object(matchJson)
                 switch obj {
                 | Some(o) => {
@@ -301,9 +302,11 @@ let fetchTermSearch = async (
             o->Dict.get("matchingText")->Option.flatMap(JSON.Decode.array)->Option.getOr([])
           let matchingText = matchingTextArray->Array.map(row => {
             switch JSON.Decode.array(row) {
-            | Some(modules) => modules->Array.map(moduleData => {
+            | Some(modules) =>
+              modules->Array.map(moduleData => {
                 switch JSON.Decode.array(moduleData) {
-                | Some(verses) => verses->Array.filterMap(
+                | Some(verses) =>
+                  verses->Array.filterMap(
                     verseJson => {
                       let verseObj = JSON.Decode.object(verseJson)
                       switch verseObj {
