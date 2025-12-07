@@ -1,4 +1,4 @@
-type bookCategory = 
+type bookCategory =
   | Pentateuch
   | Historical
   | Writings
@@ -52,7 +52,6 @@ let books = [
   {id: "Lev", sbl: "Lev", name: "Leviticus", chapters: 27, category: Pentateuch},
   {id: "Num", sbl: "Num", name: "Numbers", chapters: 36, category: Pentateuch},
   {id: "Deut", sbl: "Deut", name: "Deuteronomy", chapters: 34, category: Pentateuch},
-  
   // Historical Books
   {id: "Josh", sbl: "Josh", name: "Joshua", chapters: 24, category: Historical},
   {id: "Judg", sbl: "Judg", name: "Judges", chapters: 21, category: Historical},
@@ -66,7 +65,6 @@ let books = [
   {id: "Ezra", sbl: "Ezra", name: "Ezra", chapters: 10, category: Historical},
   {id: "Neh", sbl: "Neh", name: "Nehemiah", chapters: 13, category: Historical},
   {id: "Esth", sbl: "Esth", name: "Esther", chapters: 10, category: Historical},
-  
   // Writings
   {id: "Job", sbl: "Job", name: "Job", chapters: 42, category: Writings},
   {id: "Ps", sbl: "Ps", name: "Psalms", chapters: 150, category: Writings},
@@ -74,7 +72,6 @@ let books = [
   {id: "Eccl", sbl: "Eccl", name: "Ecclesiastes", chapters: 12, category: Writings},
   {id: "Song", sbl: "Song", name: "Song of Songs", chapters: 8, category: Writings},
   {id: "Lam", sbl: "Lam", name: "Lamentations", chapters: 5, category: Writings},
-  
   // Prophets
   {id: "Isa", sbl: "Isa", name: "Isaiah", chapters: 66, category: Prophets},
   {id: "Jer", sbl: "Jer", name: "Jeremiah", chapters: 52, category: Prophets},
@@ -92,14 +89,12 @@ let books = [
   {id: "Hag", sbl: "Hag", name: "Haggai", chapters: 2, category: Prophets},
   {id: "Zech", sbl: "Zech", name: "Zechariah", chapters: 14, category: Prophets},
   {id: "Mal", sbl: "Mal", name: "Malachi", chapters: 4, category: Prophets},
-  
   // New Testament - Gospels & Acts
   {id: "Matt", sbl: "Matt", name: "Matthew", chapters: 28, category: Gospels},
   {id: "Mark", sbl: "Mark", name: "Mark", chapters: 16, category: Gospels},
   {id: "Luke", sbl: "Luke", name: "Luke", chapters: 24, category: Gospels},
   {id: "John", sbl: "John", name: "John", chapters: 21, category: Gospels},
   {id: "Acts", sbl: "Acts", name: "Acts", chapters: 28, category: Gospels},
-  
   // Pauline Epistles
   {id: "Rom", sbl: "Rom", name: "Romans", chapters: 16, category: PaulineEpistles},
   {id: "1Cor", sbl: "1 Cor", name: "1 Corinthians", chapters: 16, category: PaulineEpistles},
@@ -114,7 +109,6 @@ let books = [
   {id: "2Tim", sbl: "2 Tim", name: "2 Timothy", chapters: 4, category: PaulineEpistles},
   {id: "Titus", sbl: "Titus", name: "Titus", chapters: 3, category: PaulineEpistles},
   {id: "Phlm", sbl: "Phlm", name: "Philemon", chapters: 1, category: PaulineEpistles},
-  
   // General Epistles
   {id: "Heb", sbl: "Heb", name: "Hebrews", chapters: 13, category: GeneralEpistles},
   {id: "Jas", sbl: "Jas", name: "James", chapters: 5, category: GeneralEpistles},
@@ -124,10 +118,8 @@ let books = [
   {id: "2John", sbl: "2 John", name: "2 John", chapters: 1, category: GeneralEpistles},
   {id: "3John", sbl: "3 John", name: "3 John", chapters: 1, category: GeneralEpistles},
   {id: "Jude", sbl: "Jude", name: "Jude", chapters: 1, category: GeneralEpistles},
-  
   // Revelation
   {id: "Rev", sbl: "Rev", name: "Revelation", chapters: 22, category: Revelation},
-  
   // Apostolic Fathers
   {id: "1Clem", sbl: "1 Clem", name: "1 Clement", chapters: 65, category: ApostolicFathers},
   {id: "2Clem", sbl: "2 Clem", name: "2 Clement", chapters: 20, category: ApostolicFathers},
@@ -142,33 +134,31 @@ let groupBooksByRow = (books: array<book>) => {
   let rows = []
   let currentRow = []
   let lastCategory = ref(None)
-  
+
   books->Array.forEach(book => {
     let needNewRow = switch lastCategory.contents {
     | None => false
-    | Some(cat) => {
-        // Start new row when:
-        // 1. Transitioning into NT (from OT to Gospels)
-        // 2. Transitioning into Apostolic Fathers
-        // 3. Current row has 4 books (wrapping)
-        (cat != Gospels && book.category == Gospels) ||
-        (cat != ApostolicFathers && book.category == ApostolicFathers) ||
-        currentRow->Array.length >= 4
-      }
+    | Some(cat) => // Start new row when:
+      // 1. Transitioning into NT (from OT to Gospels)
+      // 2. Transitioning into Apostolic Fathers
+      // 3. Current row has 4 books (wrapping)
+      (cat != Gospels && book.category == Gospels) ||
+      cat != ApostolicFathers && book.category == ApostolicFathers ||
+      currentRow->Array.length >= 4
     }
-    
+
     if needNewRow && currentRow->Array.length > 0 {
       rows->Array.push(currentRow->Array.copy)
       currentRow->Array.splice(~start=0, ~remove=currentRow->Array.length, ~insert=[])
     }
-    
+
     currentRow->Array.push(book)
     lastCategory := Some(book.category)
   })
-  
+
   if currentRow->Array.length > 0 {
     rows->Array.push(currentRow)
   }
-  
+
   rows
 }

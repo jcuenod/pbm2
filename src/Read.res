@@ -50,10 +50,10 @@ let make = (
         let element = container->Obj.magic
         let chapterElement = element["querySelector"](`#chapter-${chapterNum->Int.toString}`)
         if chapterElement !== Nullable.null->Obj.magic {
-           isProgrammaticScrollRef.current = true
-           let _ = chapterElement["scrollIntoView"]({"behavior": "smooth"})
-           // Reset after a delay to allow smooth scroll to complete
-           let _ = setTimeout(() => { isProgrammaticScrollRef.current = false }, 1000)
+          isProgrammaticScrollRef.current = true
+          let _ = chapterElement["scrollIntoView"]({"behavior": "smooth"})
+          // Reset after a delay to allow smooth scroll to complete
+          let _ = setTimeout(() => {isProgrammaticScrollRef.current = false}, 1000)
         }
       }
     | None => ()
@@ -166,7 +166,7 @@ let make = (
     let st = getScrollTop(e)
     let dy = st - lastY.current
     lastY.current = st
-    
+
     if !isProgrammaticScrollRef.current {
       // Accumulate scroll distance for smoother header behavior
       // Reset accumulator when direction changes
@@ -175,7 +175,7 @@ let make = (
       } else {
         accumulatedDy.current = accumulatedDy.current + dy
       }
-      
+
       // Use larger threshold (50px) for more stable header behavior
       if accumulatedDy.current > 50 {
         setCollapsed(_ => true)
@@ -558,9 +558,12 @@ let make = (
                                 })
                               }
                               // Clear initial load flag after scroll adjustment
-                              let _ = setTimeout(() => {
-                                isInitialLoadRef.current = false
-                              }, 100)
+                              let _ = setTimeout(
+                                () => {
+                                  isInitialLoadRef.current = false
+                                },
+                                100,
+                              )
                             }
                           | None => isInitialLoadRef.current = false
                           }
@@ -597,9 +600,9 @@ let make = (
   }
 
   <div className="flex flex-col h-full">
-    <Header 
-      collapsed={collapsed} 
-      onClick={handleHeaderClick} 
+    <Header
+      collapsed={collapsed}
+      onClick={handleHeaderClick}
       reference={reference}
       onNext=?{visibleChapter < maxChaptersForBook ? Some(handleNextChapter) : None}
       onPrev=?{visibleChapter > 1 ? Some(handlePrevChapter) : None}

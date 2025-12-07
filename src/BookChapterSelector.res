@@ -11,18 +11,18 @@ let make = (~isOpen, ~onClose, ~currentBook, ~currentChapter, ~onSelect) => {
     BibleData.books->Array.filter(book => {
       let search = searchText->String.toLowerCase
       book.name->String.toLowerCase->String.includes(search) ||
-      book.sbl->String.toLowerCase->String.includes(search)
+        book.sbl->String.toLowerCase->String.includes(search)
     })
   }
 
   let bookRows = BibleData.groupBooksByRow(filteredBooks)
-  
+
   let handleTouchStart = e => {
     let getTouchCoords = %raw(`(e) => {
       const touch = e.touches[0];
       return touch ? { x: touch.clientX, y: touch.clientY } : null;
     }`)
-    
+
     let coords = getTouchCoords(e)
     if coords !== Nullable.null {
       let x: float = %raw(`coords.x`)
@@ -30,16 +30,16 @@ let make = (~isOpen, ~onClose, ~currentBook, ~currentChapter, ~onSelect) => {
       touchStartPos.current = Some((x, y))
     }
   }
-  
+
   let handleTouchEnd = (callback, e) => {
     if !handlingEvent.current {
       let getTouchCoords = %raw(`(e) => {
         const touch = e.changedTouches[0];
         return touch ? { x: touch.clientX, y: touch.clientY } : null;
       }`)
-      
+
       let coords = getTouchCoords(e)
-      
+
       if coords !== Nullable.null && touchStartPos.current !== None {
         switch touchStartPos.current {
         | Some((startX, startY)) => {
@@ -47,7 +47,7 @@ let make = (~isOpen, ~onClose, ~currentBook, ~currentChapter, ~onSelect) => {
             let endY: float = %raw(`coords.y`)
             let deltaX = Math.abs(endX -. startX)
             let deltaY = Math.abs(endY -. startY)
-            
+
             // Only trigger if movement is less than 10 pixels (not a scroll)
             if deltaX < 10.0 && deltaY < 10.0 {
               handlingEvent.current = true
@@ -62,7 +62,7 @@ let make = (~isOpen, ~onClose, ~currentBook, ~currentChapter, ~onSelect) => {
       touchStartPos.current = None
     }
   }
-  
+
   let handleClick = (callback, e) => {
     if !handlingEvent.current {
       handlingEvent.current = true
@@ -73,7 +73,7 @@ let make = (~isOpen, ~onClose, ~currentBook, ~currentChapter, ~onSelect) => {
   }
 
   let handleBookClick = (bookId: string) => {
-    setExpandedBookId(current => 
+    setExpandedBookId(current =>
       switch current {
       | Some(id) if id == bookId => None
       | _ => Some(bookId)
@@ -89,14 +89,23 @@ let make = (~isOpen, ~onClose, ~currentBook, ~currentChapter, ~onSelect) => {
   if !isOpen {
     React.null
   } else {
-    <div 
-      className={"fixed inset-0 z-50 bg-white dark:bg-stone-900 flex flex-col animate-slide-in"}>
+    <div className={"fixed inset-0 z-50 bg-white dark:bg-stone-900 flex flex-col animate-slide-in"}>
       // Header with search and close button
       <div className="flex items-center gap-2 p-4 border-b border-stone-200 dark:border-stone-800">
         <div className="flex-1 relative group">
           <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
-            <svg className="w-5 h-5 text-stone-400 dark:text-stone-500 group-focus-within:text-teal-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            <svg
+              className="w-5 h-5 text-stone-400 dark:text-stone-500 group-focus-within:text-teal-600 transition-colors"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+              />
             </svg>
           </div>
           <input
@@ -106,19 +115,28 @@ let make = (~isOpen, ~onClose, ~currentBook, ~currentChapter, ~onSelect) => {
             placeholder="Search books..."
             className="w-full pl-10 pr-10 py-2 border border-stone-300 dark:border-stone-700 rounded-lg bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 focus:outline-none focus:border-teal-600 transition-colors"
           />
-          {searchText != "" ? 
-            <button
-              type_="button"
-              onClick={e => handleClick(() => setSearchText(_ => ""), e)}
-              onTouchStart={handleTouchStart}
-              onTouchEnd={e => handleTouchEnd(() => setSearchText(_ => ""), e)}
-              className="absolute inset-y-0 right-2 flex items-center p-1 hover:bg-stone-200 dark:hover:bg-stone-700 rounded transition-colors active:scale-95"
-              ariaLabel="Clear search">
-              <svg className="w-4 h-4 text-stone-500 dark:text-stone-400" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-              </svg>
-            </button>
-          : React.null}
+          {searchText != ""
+            ? <button
+                type_="button"
+                onClick={e => handleClick(() => setSearchText(_ => ""), e)}
+                onTouchStart={handleTouchStart}
+                onTouchEnd={e => handleTouchEnd(() => setSearchText(_ => ""), e)}
+                className="absolute inset-y-0 right-2 flex items-center p-1 hover:bg-stone-200 dark:hover:bg-stone-700 rounded transition-colors active:scale-95"
+                ariaLabel="Clear search"
+              >
+                <svg
+                  className="w-4 h-4 text-stone-500 dark:text-stone-400"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+              </button>
+            : React.null}
         </div>
         <button
           type_="button"
@@ -126,44 +144,59 @@ let make = (~isOpen, ~onClose, ~currentBook, ~currentChapter, ~onSelect) => {
           onTouchStart={handleTouchStart}
           onTouchEnd={e => handleTouchEnd(onClose, e)}
           className="p-2 hover:bg-stone-100 dark:hover:bg-stone-800 rounded-lg transition-colors active:scale-95"
-          ariaLabel="Close">
-          <svg className="w-6 h-6 text-stone-500 dark:text-stone-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+          ariaLabel="Close"
+        >
+          <svg
+            className="w-6 h-6 text-stone-500 dark:text-stone-400"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"
+            />
           </svg>
         </button>
       </div>
 
       // Scrollable content area
       <div className="flex-1 overflow-auto p-4">
-        {bookRows->Array.mapWithIndex((row, rowIndex) => {
+        {bookRows
+        ->Array.mapWithIndex((row, rowIndex) => {
           let firstBook = row->Array.get(0)
-          
+
           // Check if this is the first row of a major section - only NT and Apostolic Fathers
           let isNewSection = switch firstBook {
-          | Some(book) => 
-              rowIndex > 0 && {
+          | Some(book) =>
+            rowIndex > 0 &&
+              {
                 switch bookRows->Array.get(rowIndex - 1) {
-                | Some(prevRow) => 
-                    switch prevRow->Array.get(0) {
-                    | Some(prevBook) => {
-                        // Only add spacing when transitioning to NT or Apostolic Fathers
-                        prevBook.category != book.category && (
-                          book.category == Gospels ||
-                          book.category == ApostolicFathers
-                        )
-                      }
-                    | None => false
-                    }
+                | Some(prevRow) =>
+                  switch prevRow->Array.get(0) {
+                  | Some(
+                      prevBook,
+                    ) => // Only add spacing when transitioning to NT or Apostolic Fathers
+                    prevBook.category != book.category &&
+                      (book.category == Gospels || book.category == ApostolicFathers)
+                  | None => false
+                  }
                 | None => false
                 }
               }
+
           | None => false
           }
 
-          <div key={rowIndex->Int.toString} className={isNewSection ? "mb-3 mt-6 border-t border-stone-200 dark:border-stone-800 pt-6" : "mb-3"}>
+          <div
+            key={rowIndex->Int.toString}
+            className={isNewSection
+              ? "mb-3 mt-6 border-t border-stone-200 dark:border-stone-800 pt-6"
+              : "mb-3"}
+          >
             // Book buttons row
             <div className="grid grid-cols-4 gap-2 items-start">
-              {row->Array.map(book => {
+              {row
+              ->Array.map(book => {
                 let underlineColor = switch book.category {
                 | Pentateuch => "border-amber-500"
                 | Historical => "border-cyan-500"
@@ -186,34 +219,46 @@ let make = (~isOpen, ~onClose, ~currentBook, ~currentChapter, ~onSelect) => {
                   onClick={e => handleClick(() => handleBookClick(book.id), e)}
                   onTouchStart={handleTouchStart}
                   onTouchEnd={e => handleTouchEnd(() => handleBookClick(book.id), e)}
-                  className={
-                    "relative bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-900 dark:text-stone-100 " ++
-                    "px-3 font-semibold text-sm transition-all duration-200 active:scale-95 " ++
-                    (isExpanded ? "pt-2 pb-6 z-10" : "py-2") ++
-                    (isCurrentBook ? " bg-stone-200 dark:bg-stone-700" : "")
-                  }>
+                  className={"relative bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-900 dark:text-stone-100 " ++
+                  "px-3 font-semibold text-sm transition-all duration-200 active:scale-95 " ++
+                  (isExpanded ? "pt-2 pb-6 z-10" : "py-2") ++ (
+                    isCurrentBook ? " bg-stone-200 dark:bg-stone-700" : ""
+                  )}
+                >
                   <div className="flex flex-col items-center">
                     <div className={isExpanded ? "py-0.5" : "py-0.5"}>
                       {React.string(book.sbl)}
                     </div>
-                    <div className={"w-full border-b-2 " ++ underlineColor ++ (isExpanded ? " absolute bottom-0 left-0" : "")} />
+                    <div
+                      className={"w-full border-b-2 " ++
+                      underlineColor ++ (isExpanded ? " absolute bottom-0 left-0" : "")}
+                    />
                   </div>
-                  {isCurrentBook ? <div className="absolute top-1 right-1 w-1.5 h-1.5 bg-teal-600 rounded-full" /> : React.null}
+                  {isCurrentBook
+                    ? <div
+                        className="absolute top-1 right-1 w-1.5 h-1.5 bg-teal-600 rounded-full"
+                      />
+                    : React.null}
                 </button>
-              })->React.array}
+              })
+              ->React.array}
             </div>
 
             // Chapter buttons (expanded)
-            {row->Array.map(book => {
+            {row
+            ->Array.map(book => {
               switch expandedBookId {
-              | Some(id) if id == book.id => 
-                  <div 
-                    key={book.id ++ "-chapters"} 
-                    className="grid gap-2 px-3 py-3 border-t-0 overflow-hidden animate-slide-down bg-stone-100 dark:bg-stone-800"
-                    style={
-                      gridTemplateColumns: "repeat(auto-fit, minmax(3rem, 1fr))"
-                    }>
-                    {Array.fromInitializer(~length=book.chapters, i => i + 1)->Array.map(chapter => {
+              | Some(id) if id == book.id =>
+                <div
+                  key={book.id ++ "-chapters"}
+                  className="grid gap-2 px-3 py-3 border-t-0 overflow-hidden animate-slide-down bg-stone-100 dark:bg-stone-800"
+                  style={
+                    gridTemplateColumns: "repeat(auto-fit, minmax(3rem, 1fr))",
+                  }
+                >
+                  {Array.fromInitializer(~length=book.chapters, i => i + 1)
+                  ->Array.map(
+                    chapter => {
                       let isSelected = currentBook == book.id && currentChapter == chapter
                       <button
                         type_="button"
@@ -221,21 +266,25 @@ let make = (~isOpen, ~onClose, ~currentBook, ~currentChapter, ~onSelect) => {
                         onClick={e => handleClick(() => handleChapterClick(book, chapter), e)}
                         onTouchStart={handleTouchStart}
                         onTouchEnd={e => handleTouchEnd(() => handleChapterClick(book, chapter), e)}
-                        className={
-                          (isSelected 
-                            ? "bg-teal-600 text-white scale-105" 
-                            : "bg-white dark:bg-stone-700 text-stone-700 dark:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-600") ++
-                          " h-12 text-sm font-medium transition-all duration-200 flex items-center justify-center active:scale-95"
-                        }>
+                        className={(
+                          isSelected
+                            ? "bg-teal-600 text-white scale-105"
+                            : "bg-white dark:bg-stone-700 text-stone-700 dark:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-600"
+                        ) ++ " h-12 text-sm font-medium transition-all duration-200 flex items-center justify-center active:scale-95"}
+                      >
                         {React.string(chapter->Int.toString)}
                       </button>
-                    })->React.array}
-                  </div>
+                    },
+                  )
+                  ->React.array}
+                </div>
               | _ => React.null
               }
-            })->React.array}
+            })
+            ->React.array}
           </div>
-        })->React.array}
+        })
+        ->React.array}
       </div>
 
       <style>

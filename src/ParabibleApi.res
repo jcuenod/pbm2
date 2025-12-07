@@ -24,9 +24,7 @@ type moduleInfo = {
   abbreviation: string,
 }
 
-type moduleResponse = {
-  data: array<moduleInfo>,
-}
+type moduleResponse = {data: array<moduleInfo>}
 
 // Word details types
 type wordAttribute = {
@@ -34,9 +32,7 @@ type wordAttribute = {
   value: string,
 }
 
-type wordDetailsResponse = {
-  data: array<wordAttribute>,
-}
+type wordDetailsResponse = {data: array<wordAttribute>}
 
 // Term search types
 type searchTermData = {
@@ -66,11 +62,11 @@ let fetchModules = async (): result<array<moduleInfo>, string> => {
   try {
     let url = `https://dev.parabible.com/api/v2/module`
     let response = await Webapi.Fetch.fetch(url)
-    
+
     if response->Webapi.Fetch.Response.ok {
       let json = await response->Webapi.Fetch.Response.json
       let obj = JSON.Decode.object(json)
-      
+
       switch obj {
       | Some(o) => {
           let dataArray = o->Dict.get("data")->Option.flatMap(JSON.Decode.array)
@@ -80,8 +76,17 @@ let fetchModules = async (): result<array<moduleInfo>, string> => {
                 let moduleObj = JSON.Decode.object(moduleJson)
                 switch moduleObj {
                 | Some(mo) => {
-                    let moduleId = mo->Dict.get("moduleId")->Option.flatMap(JSON.Decode.float)->Option.map(Float.toInt)->Option.getOr(0)
-                    let abbreviation = mo->Dict.get("abbreviation")->Option.flatMap(JSON.Decode.string)->Option.getOr("")
+                    let moduleId =
+                      mo
+                      ->Dict.get("moduleId")
+                      ->Option.flatMap(JSON.Decode.float)
+                      ->Option.map(Float.toInt)
+                      ->Option.getOr(0)
+                    let abbreviation =
+                      mo
+                      ->Dict.get("abbreviation")
+                      ->Option.flatMap(JSON.Decode.string)
+                      ->Option.getOr("")
                     Some({moduleId, abbreviation})
                   }
                 | None => None
@@ -107,48 +112,81 @@ let fetchText = async (modules: string, reference: string): result<textEndpointR
   try {
     let url = `https://dev.parabible.com/api/v2/text?modules=${modules}&reference=${reference}`
     let response = await Webapi.Fetch.fetch(url)
-    
+
     if response->Webapi.Fetch.Response.ok {
       let json = await response->Webapi.Fetch.Response.json
       let data = JSON.Decode.array(json)
-      
+
       switch data {
       | Some(arr) => {
           // Parse the JSON into our types
           let result = arr->Array.map(innerArr => {
             switch JSON.Decode.array(innerArr) {
-            | Some(matches) => {
-                matches->Array.map(matchJson => {
-                  let obj = JSON.Decode.object(matchJson)
-                  switch obj {
-                  | Some(o) => {
-                      let parallelId = o->Dict.get("parallelId")->Option.flatMap(JSON.Decode.float)->Option.map(Float.toInt)->Option.getOr(0)
-                      let moduleId = o->Dict.get("moduleId")->Option.flatMap(JSON.Decode.float)->Option.map(Float.toInt)->Option.getOr(0)
-                      let rid = o->Dict.get("rid")->Option.flatMap(JSON.Decode.float)->Option.map(Float.toInt)->Option.getOr(0)
-                      let type_ = o->Dict.get("type")->Option.flatMap(JSON.Decode.string)->Option.getOr("html")
-                      let html = o->Dict.get("html")->Option.flatMap(JSON.Decode.string)
-                      let wordArray = o->Dict.get("wordArray")->Option.flatMap(JSON.Decode.array)->Option.map(arr => {
-                        arr->Array.filterMap(wordJson => {
-                          let wordObj = JSON.Decode.object(wordJson)
-                          switch wordObj {
-                          | Some(wo) => {
-                              let wid = wo->Dict.get("wid")->Option.flatMap(JSON.Decode.float)->Option.map(Float.toInt)->Option.getOr(0)
-                              let text = wo->Dict.get("text")->Option.flatMap(JSON.Decode.string)->Option.getOr("")
-                              let leader = wo->Dict.get("leader")->Option.flatMap(JSON.Decode.string)
-                              let trailer = wo->Dict.get("trailer")->Option.flatMap(JSON.Decode.string)
-                              Some({wid, text, ?leader, ?trailer})
-                            }
-                          | None => None
-                          }
-                        })
-                      })
-                      
-                      {parallelId, moduleId, rid, type_, ?html, ?wordArray}
-                    }
-                  | None => {parallelId: 0, moduleId: 0, rid: 0, type_: "html"}
+            | Some(matches) => matches->Array.map(matchJson => {
+                let obj = JSON.Decode.object(matchJson)
+                switch obj {
+                | Some(o) => {
+                    let parallelId =
+                      o
+                      ->Dict.get("parallelId")
+                      ->Option.flatMap(JSON.Decode.float)
+                      ->Option.map(Float.toInt)
+                      ->Option.getOr(0)
+                    let moduleId =
+                      o
+                      ->Dict.get("moduleId")
+                      ->Option.flatMap(JSON.Decode.float)
+                      ->Option.map(Float.toInt)
+                      ->Option.getOr(0)
+                    let rid =
+                      o
+                      ->Dict.get("rid")
+                      ->Option.flatMap(JSON.Decode.float)
+                      ->Option.map(Float.toInt)
+                      ->Option.getOr(0)
+                    let type_ =
+                      o->Dict.get("type")->Option.flatMap(JSON.Decode.string)->Option.getOr("html")
+                    let html = o->Dict.get("html")->Option.flatMap(JSON.Decode.string)
+                    let wordArray =
+                      o
+                      ->Dict.get("wordArray")
+                      ->Option.flatMap(JSON.Decode.array)
+                      ->Option.map(
+                        arr => {
+                          arr->Array.filterMap(
+                            wordJson => {
+                              let wordObj = JSON.Decode.object(wordJson)
+                              switch wordObj {
+                              | Some(wo) => {
+                                  let wid =
+                                    wo
+                                    ->Dict.get("wid")
+                                    ->Option.flatMap(JSON.Decode.float)
+                                    ->Option.map(Float.toInt)
+                                    ->Option.getOr(0)
+                                  let text =
+                                    wo
+                                    ->Dict.get("text")
+                                    ->Option.flatMap(JSON.Decode.string)
+                                    ->Option.getOr("")
+                                  let leader =
+                                    wo->Dict.get("leader")->Option.flatMap(JSON.Decode.string)
+                                  let trailer =
+                                    wo->Dict.get("trailer")->Option.flatMap(JSON.Decode.string)
+                                  Some({wid, text, ?leader, ?trailer})
+                                }
+                              | None => None
+                              }
+                            },
+                          )
+                        },
+                      )
+
+                    {parallelId, moduleId, rid, type_, ?html, ?wordArray}
                   }
-                })
-              }
+                | None => {parallelId: 0, moduleId: 0, rid: 0, type_: "html"}
+                }
+              })
             | None => []
             }
           })
@@ -169,11 +207,11 @@ let fetchWordDetails = async (wid: int, moduleId: int): result<array<wordAttribu
   try {
     let url = `https://dev.parabible.com/api/v2/word?wid=${wid->Int.toString}&moduleId=${moduleId->Int.toString}`
     let response = await Webapi.Fetch.fetch(url)
-    
+
     if response->Webapi.Fetch.Response.ok {
       let json = await response->Webapi.Fetch.Response.json
       let obj = JSON.Decode.object(json)
-      
+
       switch obj {
       | Some(o) => {
           let dataArray = o->Dict.get("data")->Option.flatMap(JSON.Decode.array)
@@ -183,8 +221,10 @@ let fetchWordDetails = async (wid: int, moduleId: int): result<array<wordAttribu
                 let attrObj = JSON.Decode.object(attrJson)
                 switch attrObj {
                 | Some(ao) => {
-                    let key = ao->Dict.get("key")->Option.flatMap(JSON.Decode.string)->Option.getOr("")
-                    let value = ao->Dict.get("value")->Option.flatMap(JSON.Decode.string)->Option.getOr("")
+                    let key =
+                      ao->Dict.get("key")->Option.flatMap(JSON.Decode.string)->Option.getOr("")
+                    let value =
+                      ao->Dict.get("value")->Option.flatMap(JSON.Decode.string)->Option.getOr("")
                     Some({key, value})
                   }
                 | None => None
@@ -208,18 +248,19 @@ let fetchWordDetails = async (wid: int, moduleId: int): result<array<wordAttribu
 // Encode search terms for URL
 let encodeSearchTerms = (terms: array<searchTermData>): string => {
   terms
-    ->Array.mapWithIndex((term, idx) => {
-      let invertedParam = term.inverted ? `t.${idx->Int.toString}.inverted=true&` : ""
-      let attributeParams = term.attributes
-        ->Array.map(((key, value)) => {
-          let encodedKey = encodeURIComponent(key)
-          let encodedValue = encodeURIComponent(value)
-          `t.${idx->Int.toString}.data.${encodedKey}=${encodedValue}`
-        })
-        ->Array.join("&")
-      `${invertedParam}${attributeParams}`
-    })
-    ->Array.join("&")
+  ->Array.mapWithIndex((term, idx) => {
+    let invertedParam = term.inverted ? `t.${idx->Int.toString}.inverted=true&` : ""
+    let attributeParams =
+      term.attributes
+      ->Array.map(((key, value)) => {
+        let encodedKey = encodeURIComponent(key)
+        let encodedValue = encodeURIComponent(value)
+        `t.${idx->Int.toString}.data.${encodedKey}=${encodedValue}`
+      })
+      ->Array.join("&")
+    `${invertedParam}${attributeParams}`
+  })
+  ->Array.join("&")
 }
 
 // Fetch term search results from the Parabible API
@@ -237,87 +278,149 @@ let fetchTermSearch = async (
     | Some(ref) => `&reference=${encodeURIComponent(ref)}`
     | None => ""
     }
-    
+
     let url = `https://dev.parabible.com/api/v2/termSearch?${termParams}&modules=${modules}&treeNodeType=${treeNodeType}${refParam}&pageSize=${pageSize->Int.toString}&page=${pageNumber->Int.toString}`
-    
+
     let response = await Webapi.Fetch.fetch(url)
-    
+
     if response->Webapi.Fetch.Response.ok {
       let json = await response->Webapi.Fetch.Response.json
       let obj = JSON.Decode.object(json)
-      
+
       switch obj {
       | Some(o) => {
-          let count = o->Dict.get("count")->Option.flatMap(JSON.Decode.float)->Option.map(Float.toInt)->Option.getOr(0)
-          
+          let count =
+            o
+            ->Dict.get("count")
+            ->Option.flatMap(JSON.Decode.float)
+            ->Option.map(Float.toInt)
+            ->Option.getOr(0)
+
           // Parse matchingText (triple nested array)
-          let matchingTextArray = o->Dict.get("matchingText")->Option.flatMap(JSON.Decode.array)->Option.getOr([])
+          let matchingTextArray =
+            o->Dict.get("matchingText")->Option.flatMap(JSON.Decode.array)->Option.getOr([])
           let matchingText = matchingTextArray->Array.map(row => {
             switch JSON.Decode.array(row) {
-            | Some(modules) => {
-                modules->Array.map(moduleData => {
-                  switch JSON.Decode.array(moduleData) {
-                  | Some(verses) => {
-                      verses->Array.filterMap(verseJson => {
-                        let verseObj = JSON.Decode.object(verseJson)
-                        switch verseObj {
-                        | Some(vo) => {
-                            let parallelId = vo->Dict.get("parallelId")->Option.flatMap(JSON.Decode.float)->Option.map(Float.toInt)->Option.getOr(0)
-                            let moduleId = vo->Dict.get("moduleId")->Option.flatMap(JSON.Decode.float)->Option.map(Float.toInt)->Option.getOr(0)
-                            let rid = vo->Dict.get("rid")->Option.flatMap(JSON.Decode.float)->Option.map(Float.toInt)->Option.getOr(0)
-                            let type_ = vo->Dict.get("type")->Option.flatMap(JSON.Decode.string)->Option.getOr("html")
-                            let html = vo->Dict.get("html")->Option.flatMap(JSON.Decode.string)
-                            let wordArray = vo->Dict.get("wordArray")->Option.flatMap(JSON.Decode.array)->Option.map(arr => {
-                              arr->Array.filterMap(wordJson => {
-                                let wordObj = JSON.Decode.object(wordJson)
-                                switch wordObj {
-                                | Some(wo) => {
-                                    let wid = wo->Dict.get("wid")->Option.flatMap(JSON.Decode.float)->Option.map(Float.toInt)->Option.getOr(0)
-                                    let text = wo->Dict.get("text")->Option.flatMap(JSON.Decode.string)->Option.getOr("")
-                                    let leader = wo->Dict.get("leader")->Option.flatMap(JSON.Decode.string)
-                                    let trailer = wo->Dict.get("trailer")->Option.flatMap(JSON.Decode.string)
-                                    Some({wid, text, ?leader, ?trailer})
-                                  }
-                                | None => None
-                                }
-                              })
-                            })
-                            Some({parallelId, moduleId, rid, type_, ?html, ?wordArray})
-                          }
-                        | None => None
+            | Some(modules) => modules->Array.map(moduleData => {
+                switch JSON.Decode.array(moduleData) {
+                | Some(verses) => verses->Array.filterMap(
+                    verseJson => {
+                      let verseObj = JSON.Decode.object(verseJson)
+                      switch verseObj {
+                      | Some(vo) => {
+                          let parallelId =
+                            vo
+                            ->Dict.get("parallelId")
+                            ->Option.flatMap(JSON.Decode.float)
+                            ->Option.map(Float.toInt)
+                            ->Option.getOr(0)
+                          let moduleId =
+                            vo
+                            ->Dict.get("moduleId")
+                            ->Option.flatMap(JSON.Decode.float)
+                            ->Option.map(Float.toInt)
+                            ->Option.getOr(0)
+                          let rid =
+                            vo
+                            ->Dict.get("rid")
+                            ->Option.flatMap(JSON.Decode.float)
+                            ->Option.map(Float.toInt)
+                            ->Option.getOr(0)
+                          let type_ =
+                            vo
+                            ->Dict.get("type")
+                            ->Option.flatMap(JSON.Decode.string)
+                            ->Option.getOr("html")
+                          let html = vo->Dict.get("html")->Option.flatMap(JSON.Decode.string)
+                          let wordArray =
+                            vo
+                            ->Dict.get("wordArray")
+                            ->Option.flatMap(JSON.Decode.array)
+                            ->Option.map(
+                              arr => {
+                                arr->Array.filterMap(
+                                  wordJson => {
+                                    let wordObj = JSON.Decode.object(wordJson)
+                                    switch wordObj {
+                                    | Some(wo) => {
+                                        let wid =
+                                          wo
+                                          ->Dict.get("wid")
+                                          ->Option.flatMap(JSON.Decode.float)
+                                          ->Option.map(Float.toInt)
+                                          ->Option.getOr(0)
+                                        let text =
+                                          wo
+                                          ->Dict.get("text")
+                                          ->Option.flatMap(JSON.Decode.string)
+                                          ->Option.getOr("")
+                                        let leader =
+                                          wo->Dict.get("leader")->Option.flatMap(JSON.Decode.string)
+                                        let trailer =
+                                          wo
+                                          ->Dict.get("trailer")
+                                          ->Option.flatMap(JSON.Decode.string)
+                                        Some({wid, text, ?leader, ?trailer})
+                                      }
+                                    | None => None
+                                    }
+                                  },
+                                )
+                              },
+                            )
+                          Some({parallelId, moduleId, rid, type_, ?html, ?wordArray})
                         }
-                      })
-                    }
-                  | None => []
-                  }
-                })
-              }
+                      | None => None
+                      }
+                    },
+                  )
+                | None => []
+                }
+              })
             | None => []
             }
           })
-          
+
           // Parse matchingWords
-          let matchingWordsArray = o->Dict.get("matchingWords")->Option.flatMap(JSON.Decode.array)->Option.getOr([])
+          let matchingWordsArray =
+            o->Dict.get("matchingWords")->Option.flatMap(JSON.Decode.array)->Option.getOr([])
           let matchingWords = matchingWordsArray->Array.filterMap(wordJson => {
             let wordObj = JSON.Decode.object(wordJson)
             switch wordObj {
             | Some(wo) => {
-                let wid = wo->Dict.get("wid")->Option.flatMap(JSON.Decode.float)->Option.map(Float.toInt)->Option.getOr(0)
-                let moduleId = wo->Dict.get("moduleId")->Option.flatMap(JSON.Decode.float)->Option.map(Float.toInt)->Option.getOr(0)
+                let wid =
+                  wo
+                  ->Dict.get("wid")
+                  ->Option.flatMap(JSON.Decode.float)
+                  ->Option.map(Float.toInt)
+                  ->Option.getOr(0)
+                let moduleId =
+                  wo
+                  ->Dict.get("moduleId")
+                  ->Option.flatMap(JSON.Decode.float)
+                  ->Option.map(Float.toInt)
+                  ->Option.getOr(0)
                 Some({wid, moduleId})
               }
             | None => None
             }
           })
-          
+
           // Parse warmWords
-          let warmWordsArray = o->Dict.get("warmWords")->Option.flatMap(JSON.Decode.array)->Option.getOr([])
+          let warmWordsArray =
+            o->Dict.get("warmWords")->Option.flatMap(JSON.Decode.array)->Option.getOr([])
           let warmWords = warmWordsArray->Array.filterMap(setJson => {
             let setObj = JSON.Decode.object(setJson)
             switch setObj {
             | Some(so) => {
-                let moduleId = so->Dict.get("moduleId")->Option.flatMap(JSON.Decode.float)->Option.map(Float.toInt)->Option.getOr(0)
-                let widsArray = so->Dict.get("wids")->Option.flatMap(JSON.Decode.array)->Option.getOr([])
+                let moduleId =
+                  so
+                  ->Dict.get("moduleId")
+                  ->Option.flatMap(JSON.Decode.float)
+                  ->Option.map(Float.toInt)
+                  ->Option.getOr(0)
+                let widsArray =
+                  so->Dict.get("wids")->Option.flatMap(JSON.Decode.array)->Option.getOr([])
                 let wids = widsArray->Array.filterMap(widJson => {
                   JSON.Decode.float(widJson)->Option.map(Float.toInt)
                 })
@@ -326,7 +429,7 @@ let fetchTermSearch = async (
             | None => None
             }
           })
-          
+
           Ok({count, matchingText, matchingWords, warmWords})
         }
       | None => Error("Failed to parse response")
