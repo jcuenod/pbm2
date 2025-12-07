@@ -88,6 +88,8 @@ let make = (
   let (showAddAttrDialog, setShowAddAttrDialog) = React.useState(() => false)
   let (newAttrKey, setNewAttrKey) = React.useState(() => "")
   let (newAttrValue, setNewAttrValue) = React.useState(() => "")
+  let (isAtScrollEnd, setIsAtScrollEnd) = React.useState(() => false)
+  let (isScrollable, setIsScrollable) = React.useState(() => false)
   let pageSize = 20
 
   let clearEditingState = () => {
@@ -284,6 +286,38 @@ let make = (
     None
   }, (searchTerms, selectedModuleIds, currentPage))
 
+  let scrollContainerRef = React.useRef(Nullable.null)
+
+  let checkScrollEnd = () => {
+    switch scrollContainerRef.current->Nullable.toOption {
+    | Some(element) =>
+      let el = element->Obj.magic
+      let scrollLeft = el["scrollLeft"]
+      let scrollWidth = el["scrollWidth"]
+      let clientWidth = el["clientWidth"]
+      let scrollable = scrollWidth > clientWidth
+      let atEnd = scrollLeft + clientWidth >= scrollWidth - 1
+      setIsScrollable(_ => scrollable)
+      setIsAtScrollEnd(_ => atEnd)
+    | None => ()
+    }
+  }
+
+  let scrollToEnd = () => {
+    switch scrollContainerRef.current->Nullable.toOption {
+    | Some(element) =>
+      let el = element->Obj.magic
+      let scrollWidth = el["scrollWidth"]
+      el["scrollTo"]({"left": scrollWidth, "behavior": "smooth"})
+    | None => ()
+    }
+  }
+
+  React.useEffect1(() => {
+    checkScrollEnd()
+    None
+  }, [searchTerms])
+
   <div className="flex flex-col h-full">
     <div className="p-4 border-b border-gray-200 dark:border-stone-800">
       <h1 className="text-2xl font-bold mb-2"> {React.string("Search Results")} </h1>
@@ -297,7 +331,11 @@ let make = (
               </span>
             </div>
             <div className="relative -mx-4">
-              <div className="flex overflow-x-auto gap-2 pb-2 px-4 scrollbar-hide">
+              <div
+                ref={ReactDOM.Ref.domRef(scrollContainerRef)}
+                className="flex overflow-x-auto gap-2 pb-2 px-4 scrollbar-hide"
+                onScroll={_ => checkScrollEnd()}
+              >
                 {searchTerms
                 ->Array.mapWithIndex((term, idx) => {
                   let primaryAttr = term.attributes->Array.get(0)
@@ -353,9 +391,34 @@ let make = (
                 ->React.array}
                 <div className="w-12 shrink-0" />
               </div>
-              <div
-                className="absolute right-0 top-0 bottom-0 w-12 bg-gradient-to-l from-white dark:from-black to-transparent pointer-events-none"
-              />
+              {if isScrollable {
+                <div className="absolute right-0 -top-1 bottom-1 flex">
+                  <div
+                    className="w-5 h-full bg-gradient-to-l from-white dark:from-black to-transparent pointer-events-none"
+                  >
+                  </div>
+                  <button
+                    className={"w-10 h-full flex items-center justify-center bg-white dark:bg-black transition-colors " ++ (
+                      isAtScrollEnd
+                        ? "text-stone-300 dark:text-stone-700 cursor-default"
+                        : "text-teal-600 hover:text-teal-800 dark:hover:text-teal-200"
+                    )}
+                    onClick={_ =>
+                      if !isAtScrollEnd {
+                        scrollToEnd()
+                      }}
+                    disabled={isAtScrollEnd}
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path
+                        strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"
+                      />
+                    </svg>
+                  </button>
+                </div>
+              } else {
+                React.null
+              }}
             </div>
             {totalPages > 0
               ? <div className="space-y-2">
