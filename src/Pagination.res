@@ -53,9 +53,6 @@ let make = (~totalPages: int, ~currentPage: int, ~onPageChange: int => unit) => 
       "bg-stone-100 dark:bg-stone-800 text-stone-800 dark:text-stone-100 hover:bg-stone-200 dark:hover:bg-stone-700"
     }
 
-  let placeholderClass =
-    "h-10 min-w-[2.75rem] rounded text-sm font-semibold transition-all flex items-center justify-center border border-transparent opacity-0 cursor-default"
-
   <div className="flex items-center justify-center gap-2">
     <button
       className={navButtonClass(canGoFirst)}
@@ -77,10 +74,7 @@ let make = (~totalPages: int, ~currentPage: int, ~onPageChange: int => unit) => 
         >
           {React.string((page + 1)->Int.toString)}
         </button>
-      | None =>
-        <button key={idx->Int.toString} className={placeholderClass} disabled=true>
-          {React.null}
-        </button>
+      | None => React.null
       }
     )
     ->React.array}
