@@ -5,6 +5,10 @@
   touch-action: manipulation;
 }
 
+html, body {
+  overscroll-behavior-y: contain; 
+}
+
 .rtl {
   direction: rtl;
   text-align: right;

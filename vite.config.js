@@ -35,7 +35,7 @@ export default defineConfig({
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/dev\.parabible\.com\/api\/.*/i,
-            handler: "CacheFirst",
+            handler: "StaleWhileRevalidate",
             options: {
               cacheName: "parabible-api-cache",
               expiration: {
