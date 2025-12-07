@@ -1,3 +1,6 @@
+@module("./jsHelpers.js")
+external getElementIndexFromId: (float, float, string) => Nullable.t<int> = "getElementIndexFromId"
+
 @react.component
 let make = (~availableModules, ~selectedModuleIds, ~onModuleToggle, ~onReorder, ~onBack) => {
   let (draggingIndex, setDraggingIndex) = React.useState(() => None)
@@ -11,39 +14,54 @@ let make = (~availableModules, ~selectedModuleIds, ~onModuleToggle, ~onReorder, 
     !(selectedModuleIds->Array.includes(m.moduleId))
   })
 
+  let moveItem = (fromIndex, toIndex) => {
+    let newOrder = selectedModuleIds->Array.copy
+    let item = newOrder->Array.get(fromIndex)
+    switch item {
+    | Some(moduleId) =>
+      let _ = newOrder->Array.splice(~start=fromIndex, ~remove=1, ~insert=[])
+      let _ = newOrder->Array.splice(~start=toIndex, ~remove=0, ~insert=[moduleId])
+      onReorder(newOrder)
+      setDraggingIndex(_ => Some(toIndex))
+    | None => ()
+    }
+  }
+
   let handleDragStart = (index, _e) => {
     setDraggingIndex(_ => Some(index))
   }
 
-  let handleDragOver = e => {
-    ReactEvent.Mouse.preventDefault(e)
-  }
-
-  let handleDrop = (targetIndex, e) => {
+  let handleDragOver = (index, e) => {
     ReactEvent.Mouse.preventDefault(e)
     switch draggingIndex {
-    | Some(fromIndex) if fromIndex != targetIndex => {
-        let newOrder = selectedModuleIds->Array.copy
-        let item = newOrder->Array.get(fromIndex)
+    | Some(fromIndex) if fromIndex != index => moveItem(fromIndex, index)
+    | _ => ()
+    }
+  }
 
-        switch item {
-        | Some(moduleId) => {
-            // Remove from old position
-            let _ = newOrder->Array.splice(~start=fromIndex, ~remove=1, ~insert=[])
-            // Insert at new position
-            let insertIndex = if fromIndex < targetIndex {
-              targetIndex - 1
-            } else {
-              targetIndex
-            }
-            let _ = newOrder->Array.splice(~start=insertIndex, ~remove=0, ~insert=[moduleId])
-            onReorder(newOrder)
-          }
-        | None => ()
+  let handleTouchStart = (index, _e) => {
+    setDraggingIndex(_ => Some(index))
+  }
+
+  let handleTouchMove = e => {
+    switch draggingIndex {
+    | Some(fromIdx) =>
+      ReactEvent.Touch.preventDefault(e)
+      let nativeEvent = ReactEvent.Touch.nativeEvent(e)
+      let touches = nativeEvent["touches"]
+      if touches["length"] > 0 {
+        let touch = touches["0"]
+        let clientX = touch["clientX"]
+        let clientY = touch["clientY"]
+
+        let targetIndex = getElementIndexFromId(clientX, clientY, "module-item-")->Nullable.toOption
+
+        switch targetIndex {
+        | Some(toIdx) if fromIdx != toIdx => moveItem(fromIdx, toIdx)
+        | _ => ()
         }
-        setDraggingIndex(_ => None)
       }
-    | _ => setDraggingIndex(_ => None)
+    | None => ()
     }
   }
 
@@ -84,29 +102,37 @@ let make = (~availableModules, ~selectedModuleIds, ~onModuleToggle, ~onReorder, 
                 let isDragging = draggingIndex == Some(index)
                 <div
                   key={module_.moduleId->Int.toString}
-                  draggable={true}
-                  onDragStart={e => handleDragStart(index, e)}
-                  onDragOver={handleDragOver}
-                  onDrop={e => handleDrop(index, e)}
-                  onDragEnd={handleDragEnd}
-                  className={"flex items-center gap-3 p-3 bg-gray-50 dark:bg-stone-800 rounded-lg border-2 " ++
-                  (isDragging
-                    ? "border-blue-500 opacity-50"
-                    : "border-transparent hover:border-gray-300 dark:hover:border-stone-600") ++ " cursor-move transition-all"}
+                  id={"module-item-" ++ index->Int.toString}
+                  onDragOver={e => handleDragOver(index, e)}
+                  className={"flex items-center gap-3 p-3 bg-gray-50 dark:bg-stone-800 rounded-lg border-2 " ++ (
+                    isDragging
+                      ? "border-blue-500 opacity-50"
+                      : "border-transparent hover:border-gray-300 dark:hover:border-stone-600"
+                  ) ++ " transition-all"}
                 >
-                  <svg
-                    className="w-5 h-5 text-gray-400"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
+                  <div
+                    className="cursor-move touch-none text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                    draggable={true}
+                    onDragStart={e => handleDragStart(index, e)}
+                    onDragEnd={handleDragEnd}
+                    onTouchStart={e => handleTouchStart(index, e)}
+                    onTouchMove={handleTouchMove}
+                    onTouchEnd={handleDragEnd}
                   >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M4 8h16M4 16h16"
-                    />
-                  </svg>
+                    <svg
+                      className="w-5 h-5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M4 8h16M4 16h16"
+                      />
+                    </svg>
+                  </div>
                   <span className="flex-1 font-medium"> {React.string(module_.abbreviation)} </span>
                   <button
                     onClick={_ => onModuleToggle(module_.moduleId)}

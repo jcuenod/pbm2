@@ -21,6 +21,26 @@ export function setLocalStorage(key, value) {
   window.localStorage.setItem(key, value)
 }
 
+export function setHtmlDark(dark) {
+  if (typeof document === 'undefined') return
+  if (dark) {
+    document.documentElement.classList.add('dark')
+  } else {
+    document.documentElement.classList.remove('dark')
+  }
+}
+
+export function getElementIndexFromId(x, y, prefix) {
+  if (typeof document === 'undefined') return null
+  const element = document.elementFromPoint(x, y)
+  if (!element) return null
+  const target = element.closest(`[id^="${prefix}"]`)
+  if (!target) return null
+  const id = target.id
+  const val = id.replace(prefix, '')
+  return val ? parseInt(val, 10) : null
+}
+
 export function replaceHistory(path) {
   if (typeof history !== 'undefined' && history.replaceState) {
     // Prepend the base URL to the path
@@ -42,11 +62,6 @@ export function setTransform(el, value) {
   try {
     el.style.transform = value
   } catch (err) {}
-}
-
-export function setHtmlDark(dark) {
-  if (typeof document === 'undefined') return
-  document.querySelector("html").classList.toggle("dark", dark)
 }
 
 export function setTransformBySelector(selector, value) {
