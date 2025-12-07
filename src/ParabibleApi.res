@@ -57,6 +57,17 @@ type termSearchResult = {
   warmWords: array<warmWordSet>,
 }
 
+// Dictionary types
+type dictionaryEntry = {
+  id: string,
+  uri: string,
+  xmlContent: string,
+}
+
+type dictionaryEntriesResponse = {
+  data: {dictionaryEntries: array<dictionaryEntry>},
+}
+
 // Fetch available modules from the Parabible API
 let fetchModules = async (): result<array<moduleInfo>, string> => {
   try {
@@ -434,6 +445,96 @@ let fetchTermSearch = async (
           })
 
           Ok({count, matchingText, matchingWords, warmWords})
+        }
+      | None => Error("Failed to parse response")
+      }
+    } else {
+      Error(`HTTP error: ${response->Webapi.Fetch.Response.status->Int.toString}`)
+    }
+  } catch {
+  | _ => Error("Fetch error")
+  }
+}
+
+// Fetch dictionary entries for a lexeme
+let fetchDictionaryEntry = async (lexeme: string): result<array<dictionaryEntry>, string> => {
+  try {
+    let url = "https://symphony-atlas-svc-prod.fly.dev/graphql/"
+    
+    // Build the GraphQL query
+    let query = "query DictionaryEntries($filters: DictionaryEntryFilter!) {
+  dictionaryEntries(filters: $filters) {
+    id
+    uri
+    xmlContent
+    __typename
+  }
+}
+"
+    
+    // Build the request body
+    let body = {
+      "operationName": "DictionaryEntries",
+      "variables": {
+        "filters": {
+          "headword": {
+            "iExact": lexeme,
+          },
+          "dictionary": {
+            "uri": {
+              "exact": "dictionaries:abbott-smith-lexicon",
+            },
+          },
+        },
+      },
+      "query": query,
+    }
+    
+    let bodyString = JSON.stringifyAny(body)->Option.getOr("{}")
+    
+    let response = await Webapi.Fetch.fetchWithInit(
+      url,
+      Webapi.Fetch.RequestInit.make(
+        ~method_=Post,
+        ~headers=Webapi.Fetch.HeadersInit.make({
+          "content-type": "application/json",
+        }),
+        ~body=Webapi.Fetch.BodyInit.make(bodyString),
+        (),
+      ),
+    )
+
+    if response->Webapi.Fetch.Response.ok {
+      let json = await response->Webapi.Fetch.Response.json
+      let obj = JSON.Decode.object(json)
+
+      switch obj {
+      | Some(o) => {
+          let dataObj = o->Dict.get("data")->Option.flatMap(JSON.Decode.object)
+          switch dataObj {
+          | Some(d) => {
+              let entriesArray = d->Dict.get("dictionaryEntries")->Option.flatMap(JSON.Decode.array)
+              switch entriesArray {
+              | Some(arr) => {
+                  let entries = arr->Array.filterMap(entryJson => {
+                    let entryObj = JSON.Decode.object(entryJson)
+                    switch entryObj {
+                    | Some(e) => {
+                        let id = e->Dict.get("id")->Option.flatMap(JSON.Decode.string)->Option.getOr("")
+                        let uri = e->Dict.get("uri")->Option.flatMap(JSON.Decode.string)->Option.getOr("")
+                        let xmlContent = e->Dict.get("xmlContent")->Option.flatMap(JSON.Decode.string)->Option.getOr("")
+                        Some({id, uri, xmlContent})
+                      }
+                    | None => None
+                    }
+                  })
+                  Ok(entries)
+                }
+              | None => Error("Failed to parse dictionary entries")
+              }
+            }
+          | None => Error("Failed to parse data object")
+          }
         }
       | None => Error("Failed to parse response")
       }

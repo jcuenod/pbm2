@@ -155,6 +155,11 @@ let make = (
   let (error, setError) = React.useState(() => None)
   let (selectedAttributes, setSelectedAttributes) = React.useState(() => [])
   let (showMenu, setShowMenu) = React.useState(() => false)
+  
+  // Dictionary state
+  let (dictionaryEntries, setDictionaryEntries) = React.useState(() => None)
+  let (dictionaryLoading, setDictionaryLoading) = React.useState(() => false)
+  let (dictionaryError, setDictionaryError) = React.useState(() => None)
 
   // Switch to WordDetails tab when a new word is selected
   React.useEffect1(() => {
@@ -197,6 +202,39 @@ let make = (
     }
     None
   }, [selectedWord])
+
+  // Fetch dictionary entries when activeTab changes to Dictionaries
+  React.useEffect2(() => {
+    if activeTab == Dictionaries {
+      switch wordDetails {
+      | Some(details) => {
+          let lexeme = getAttr(details, "lexeme")
+          if lexeme != "" {
+            setDictionaryLoading(_ => true)
+            setDictionaryError(_ => None)
+
+            let fetchData = async () => {
+              let result = await ParabibleApi.fetchDictionaryEntry(lexeme)
+              switch result {
+              | Ok(entries) => {
+                  setDictionaryEntries(_ => Some(entries))
+                  setDictionaryLoading(_ => false)
+                }
+              | Error(err) => {
+                  setDictionaryError(_ => Some(err))
+                  setDictionaryLoading(_ => false)
+                }
+              }
+            }
+
+            let _ = fetchData()
+          }
+        }
+      | None => ()
+      }
+    }
+    None
+  }, (activeTab, wordDetails))
 
   // Close menu when clicking outside
   React.useEffect1(() => {
@@ -467,11 +505,54 @@ let make = (
       </div>
         }
       | Dictionaries =>
-        <div
-          className="flex items-center justify-center h-full text-gray-500 dark:text-gray-400 p-8 text-center"
-        >
-          {React.string("Dictionaries coming soon")}
-        </div>
+        switch (dictionaryLoading, dictionaryError, dictionaryEntries, wordDetails) {
+        | (true, _, _, _) => 
+          <div className="flex items-center justify-center h-full p-8">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-600 mx-auto mb-4" />
+              <div className="text-gray-600 dark:text-gray-400">{React.string("Loading dictionary entry...")}</div>
+            </div>
+          </div>
+        | (_, Some(err), _, _) =>
+          <div className="flex items-center justify-center h-full text-red-600 dark:text-red-400 p-8 text-center">
+            {React.string(`Error loading dictionary: ${err}`)}
+          </div>
+        | (false, None, Some(entries), Some(details)) =>
+          if entries->Array.length > 0 {
+            <div className="flex-1 overflow-auto p-4">
+              {entries->Array.mapWithIndex((entry, idx) => {
+                <div key={entry.id} className="mb-6">
+                  {idx == 0 ? React.null : <hr className="mb-6 border-gray-200 dark:border-stone-700" />}
+                  <div className="bg-white dark:bg-stone-900 rounded-lg border border-gray-200 dark:border-stone-700 p-4">
+                    <div className="mb-2 text-xs text-gray-500 dark:text-gray-400 font-mono">
+                      {React.string("Abbot Smith")}
+                      // {React.string(entry.uri)}
+                    </div>
+                    <div 
+                      className="prose prose-sm dark:prose-invert max-w-none"
+                      dangerouslySetInnerHTML={{"__html": entry.xmlContent}}
+                    />
+                  </div>
+                </div>
+              })->React.array}
+            </div>
+          } else {
+            let lexeme = getAttr(details, "lexeme")
+            <div className="flex items-center justify-center h-full text-gray-500 dark:text-gray-400 p-8 text-center">
+              <div>
+                <div className="text-lg mb-2">{React.string("No dictionary entries found")}</div>
+                {lexeme != "" 
+                  ? <div className="text-sm font-['SBL_BibLit']">{React.string(`for "${lexeme}"`)}</div>
+                  : React.null
+                }
+              </div>
+            </div>
+          }
+        | _ =>
+          <div className="flex items-center justify-center h-full text-gray-500 dark:text-gray-400 p-8 text-center">
+            {React.string("Select a word to view dictionary entries")}
+          </div>
+        }
       | Commentaries =>
         <div
           className="flex items-center justify-center h-full text-gray-500 dark:text-gray-400 p-8 text-center"

@@ -93,3 +93,21 @@ html, body {
 .animate-fade-out {
   animation: fade-out 0.3s ease-in forwards;
 }
+
+
+/* dictionary */
+orth, foreign {
+  font-family: 'SBL BibLit', serif;
+}
+orth {
+  font-weight: bold;
+}
+
+cit {
+  font-style: normal;
+  opacity: 0.7;
+}
+
+note {
+  display: none;
+}
