@@ -289,11 +289,18 @@ let make = (
       {searchTerms->Array.length > 0
         ? <div className="space-y-4">
             <div className="text-sm text-gray-600 dark:text-gray-400">
-              {React.string(`${resultCount->Int.toString} results found`)}
+            <span className="mr-2">
+              {React.string(`${resultCount->Int.toString} results`)}
+            </span>
+            {React.string("·")}
+            <span className="ml-2">
+              {React.string(`${searchTerms->Array.length->Int.toString} search terms`)}
+              </span>
             </div>
-            <div className="flex flex-wrap gap-2">
-              {searchTerms
-              ->Array.mapWithIndex((term, idx) => {
+            <div className="relative -mx-4">
+              <div className="flex overflow-x-auto gap-2 pb-2 px-4 scrollbar-hide">
+                {searchTerms
+                ->Array.mapWithIndex((term, idx) => {
                 let primaryAttr = term.attributes->Array.get(0)
                 let summary = switch primaryAttr {
                 | Some((key, value)) => `${String.replaceAll(key, "_", " ")}: ${value}`
@@ -308,7 +315,7 @@ let make = (
 
                 <div
                   key={idx->Int.toString}
-                  className="group flex items-center bg-stone-100 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 overflow-hidden transition-all active:scale-95">
+                  className="shrink-0 group flex items-center bg-stone-100 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 overflow-hidden transition-all active:scale-95">
                   <button
                     className="px-3 py-2 text-sm font-medium text-stone-900 dark:text-stone-100 hover:bg-stone-200 dark:hover:bg-stone-700 flex items-center gap-2"
                     onClick={_ => startEditingTerm(idx)}>
@@ -339,7 +346,10 @@ let make = (
                 </div>
               })
               ->React.array}
+              <div className="w-12 shrink-0" />
             </div>
+            <div className="absolute right-0 top-0 bottom-0 w-12 bg-gradient-to-l from-white dark:from-black to-transparent pointer-events-none" />
+          </div>
             {totalPages > 0
               ? <div className="space-y-2">
                   <Pagination
