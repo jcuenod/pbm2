@@ -426,9 +426,7 @@ let make = (
                 </div>
               : React.null}
           </div>
-        : <div className="text-sm text-gray-600 dark:text-gray-400">
-            {React.string("No search terms. Select word attributes in Tools to begin.")}
-          </div>}
+        : React.null}
     </div>
 
     <div className="flex-1 overflow-auto p-4">
