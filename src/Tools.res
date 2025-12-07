@@ -1,3 +1,37 @@
+// Import features data
+@module("./assets/features.json") external featuresData: {..} = "default"
+
+type featureInfo = {
+  key: string,
+  value: string,
+  @as("enum") enum_: bool,
+}
+
+type featureValue = {
+  feature: string,
+  key: string,
+  value: string,
+}
+
+let features: array<featureInfo> = featuresData["features"]
+let values: array<featureValue> = featuresData["values"]
+
+// Translate feature key to readable label
+let translateFeatureKey = (key: string): string => {
+  features
+  ->Array.find(f => f.key == key)
+  ->Option.map(f => f.value)
+  ->Option.getOr(String.replaceAll(key, "_", " "))
+}
+
+// Translate feature value to readable label
+let translateFeatureValue = (featureKey: string, valueKey: string): string => {
+  values
+  ->Array.find(v => v.feature == featureKey && v.key == valueKey)
+  ->Option.map(v => v.value)
+  ->Option.getOr(valueKey)
+}
+
 // Helper to find attribute value by key
 let findAttr = (attrs: array<ParabibleApi.wordAttribute>, key: string): option<string> => {
   attrs->Array.find(attr => attr.key == key)->Option.map(attr => attr.value)
@@ -99,17 +133,37 @@ let formatWordDetails = (attrs: array<ParabibleApi.wordAttribute>): (
   (primary, finalSecondary)
 }
 
+type toolTab =
+  | WordDetails
+  | Dictionaries
+  | Commentaries
+
 @react.component
 let make = (
   ~selectedWord: option<(int, int)>,
   ~onAddSearchTerms: (array<ParabibleApi.searchTermData>, bool) => unit,
   ~hasExistingSearchTerms: bool,
 ) => {
+  let (activeTab, setActiveTab) = React.useState(() => WordDetails)
+  let tabIndex = switch activeTab {
+  | WordDetails => 0
+  | Dictionaries => 1
+  | Commentaries => 2
+  }
   let (wordDetails, setWordDetails) = React.useState(() => None)
   let (loading, setLoading) = React.useState(() => false)
   let (error, setError) = React.useState(() => None)
   let (selectedAttributes, setSelectedAttributes) = React.useState(() => [])
   let (showMenu, setShowMenu) = React.useState(() => false)
+
+  // Switch to WordDetails tab when a new word is selected
+  React.useEffect1(() => {
+    switch selectedWord {
+    | Some(_) => setActiveTab(_ => WordDetails)
+    | None => ()
+    }
+    None
+  }, [selectedWord])
 
   // Fetch word details when selectedWord changes
   React.useEffect1(() => {
@@ -175,8 +229,49 @@ let make = (
     }
   }, [showMenu])
 
-  <div className="flex flex-col h-full">
-    {switch (loading, error, wordDetails, selectedWord) {
+  <div className="flex flex-col h-full bg-white dark:bg-stone-950">
+    <div className="p-4 bg-white dark:bg-stone-900">
+      <h1 className="text-2xl font-bold mb-4 text-gray-900 dark:text-gray-100">
+        {React.string("Tools")}
+      </h1>
+      <div className="relative flex border-b border-gray-200 dark:border-stone-700">
+        <div
+          className="absolute bottom-0 h-0.5 bg-teal-600 dark:bg-teal-400 transition-all duration-300 ease-in-out"
+          style={{
+            left: `calc(100% / 3 * ${Int.toString(tabIndex)})`,
+            width: "calc(100% / 3)",
+          }}
+        />
+        <button
+          className={`flex-1 pb-3 text-sm font-medium transition-colors ${activeTab == WordDetails
+              ? "text-teal-600 dark:text-teal-400"
+              : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"}`}
+          onClick={_ => setActiveTab(_ => WordDetails)}
+        >
+          {React.string("Word Details")}
+        </button>
+        <button
+          className={`flex-1 pb-3 text-sm font-medium transition-colors ${activeTab == Dictionaries
+              ? "text-teal-600 dark:text-teal-400"
+              : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"}`}
+          onClick={_ => setActiveTab(_ => Dictionaries)}
+        >
+          {React.string("Dictionaries")}
+        </button>
+        <button
+          className={`flex-1 pb-3 text-sm font-medium transition-colors ${activeTab == Commentaries
+              ? "text-teal-600 dark:text-teal-400"
+              : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"}`}
+          onClick={_ => setActiveTab(_ => Commentaries)}
+        >
+          {React.string("Commentaries")}
+        </button>
+      </div>
+    </div>
+    <div className="flex-1 overflow-hidden flex flex-col relative">
+      {switch activeTab {
+      | WordDetails =>
+        switch (loading, error, wordDetails, selectedWord) {
     | (true, _, _, _) => <div className="text-center py-8"> {React.string("Loading...")} </div>
     | (_, Some(err), _, _) =>
       <div className="text-center py-8 text-red-600 dark:text-red-400">
@@ -188,7 +283,7 @@ let make = (
         <div className="flex flex-col h-full">
           // Primary information (lexeme and gloss)
           <div
-            className="bg-blue-50 dark:bg-blue-950 border-b-2 border-blue-200 dark:border-blue-800 p-4 flex items-center justify-center gap-4"
+            className="bg-teal-50 dark:bg-teal-950 border-t-2 border-b-2 border-teal-200 dark:border-teal-800 p-4 flex items-center justify-center gap-4"
           >
             {primary
             ->Array.mapWithIndex((d, i) => {
@@ -222,7 +317,7 @@ let make = (
                 let isSelected =
                   selectedAttributes->Array.some(((k, v)) => k == attr.key && v == attr.value)
                 let bgColor = isSelected
-                  ? "bg-blue-100 dark:bg-blue-900 border-blue-500"
+                  ? "bg-teal-100 dark:bg-teal-900 border-teal-500"
                   : "bg-white dark:bg-stone-800 border-gray-200 dark:border-stone-700"
                 let langClass = if isHebrew(attr.value) {
                   "font-['SBL_BibLit'] text-xl rtl text-right"
@@ -249,10 +344,10 @@ let make = (
                   <div
                     className="font-semibold text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide"
                   >
-                    {String.replaceAll(attr.key, "_", " ")->React.string}
+                    {translateFeatureKey(attr.key)->React.string}
                   </div>
                   <div className={`mt-1 text-gray-900 dark:text-gray-100 ${langClass}`}>
-                    {React.string(attr.value)}
+                    {translateFeatureValue(attr.key, attr.value)->React.string}
                   </div>
                 </div>
               })
@@ -349,7 +444,7 @@ let make = (
                   setSelectedAttributes(_ => [])
                 }
               }}
-              className="w-14 h-14 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-lg flex items-center justify-center transition-all transform hover:scale-110 z-20 relative"
+              className="w-14 h-14 bg-teal-600 hover:bg-teal-700 text-white rounded-full shadow-lg flex items-center justify-center transition-all transform hover:scale-110 z-20 relative"
               title="Search"
             >
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -370,6 +465,20 @@ let make = (
       >
         {React.string("Click on a word in the Read view to see its details")}
       </div>
-    }}
+        }
+      | Dictionaries =>
+        <div
+          className="flex items-center justify-center h-full text-gray-500 dark:text-gray-400 p-8 text-center"
+        >
+          {React.string("Dictionaries coming soon")}
+        </div>
+      | Commentaries =>
+        <div
+          className="flex items-center justify-center h-full text-gray-500 dark:text-gray-400 p-8 text-center"
+        >
+          {React.string("Commentaries coming soon")}
+        </div>
+      }}
+    </div>
   </div>
 }

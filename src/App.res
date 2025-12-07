@@ -145,6 +145,7 @@ let make = () => {
         onUpdateSearchTerm={handleUpdateSearchTerm}
         onDeleteSearchTerm={handleDeleteSearchTerm}
         onWordClick={handleWordClick}
+        selectedWord
       />
     | 3 =>
       <Settings

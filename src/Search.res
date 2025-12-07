@@ -75,6 +75,7 @@ let make = (
   ~onUpdateSearchTerm: (int, ParabibleApi.searchTermData) => unit,
   ~onDeleteSearchTerm: int => unit,
   ~onWordClick: (int, int) => unit,
+  ~selectedWord: option<(int, int)>,
 ) => {
   let (searchResults, setSearchResults) = React.useState(() => None)
   let (loading, setLoading) = React.useState(() => false)
@@ -492,7 +493,7 @@ let make = (
                                 baseMatch={baseMatch}
                                 moduleId
                                 moduleAbbrev
-                                selectedWord={None}
+                                selectedWord
                                 onWordClick
                                 highlightWords=?Some(highlightPairs)
                               />
