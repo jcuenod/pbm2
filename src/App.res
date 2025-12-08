@@ -3,9 +3,7 @@ external getPath: unit => string = "getPath"
 @module("./jsHelpers.js")
 external replaceHistory: string => unit = "replaceHistory"
 @module("./jsHelpers.js")
-external getLocalStorage: string => Nullable.t<string> = "getLocalStorage"
-@module("./jsHelpers.js")
-external setLocalStorage: (string, string) => unit = "setLocalStorage"
+external setHtmlDark: bool => unit = "setHtmlDark"
 
 let routes = Belt.List.fromArray(["/r/", "/g/", "/q/", "/a/"])
 
@@ -20,24 +18,21 @@ let make = () => {
     | _ => 0
     }
 
+  // Load initial state from StateService
+  let initialState = StateService.loadAppState()
+
   // Module state
   let (availableModules, setAvailableModules) = React.useState(() => [])
-  let (selectedModuleIds, setSelectedModuleIds) = React.useState(() => {
-    // Try to load from localStorage
-    switch getLocalStorage("selectedModules")->Nullable.toOption {
-    | Some(stored) => // Parse comma-separated IDs
-      stored
-      ->String.split(",")
-      ->Array.filterMap(idStr => Int.fromString(idStr))
-    | None => [] // Will be set once modules are loaded
-    }
-  })
+  let (selectedModuleIds, setSelectedModuleIds) = React.useState(() => initialState.selectedModuleIds)
 
   // Selected word state (wid, moduleId)
-  let (selectedWord, setSelectedWord) = React.useState(() => None)
+  let (selectedWord, setSelectedWord) = React.useState(() => initialState.selectedWord)
 
   // Search terms state
-  let (searchTerms, setSearchTerms) = React.useState(() => [])
+  let (searchTerms, setSearchTerms) = React.useState(() => initialState.searchTerms)
+
+  // Dark mode state
+  let (darkMode, setDarkMode) = React.useState(() => initialState.darkMode)
 
   // Load modules on mount
   React.useEffect0(() => {
@@ -65,12 +60,35 @@ let make = () => {
     None
   })
 
+  // Initialize dark mode on mount
+  React.useEffect1(() => {
+    setHtmlDark(darkMode)
+    None
+  }, [darkMode])
+
   // Save selected modules to localStorage whenever they change
   React.useEffect1(() => {
-    let moduleString = selectedModuleIds->Array.map(id => id->Int.toString)->Array.join(",")
-    setLocalStorage("selectedModules", moduleString)
+    StateService.saveSelectedModuleIds(selectedModuleIds)
     None
   }, [selectedModuleIds])
+
+  // Save selected word whenever it changes
+  React.useEffect1(() => {
+    StateService.saveSelectedWord(selectedWord)
+    None
+  }, [selectedWord])
+
+  // Save search terms whenever they change
+  React.useEffect1(() => {
+    StateService.saveSearchTerms(searchTerms)
+    None
+  }, [searchTerms])
+
+  // Save dark mode whenever it changes
+  React.useEffect1(() => {
+    StateService.saveDarkMode(darkMode)
+    None
+  }, [darkMode])
 
   let (index, setIndex) = React.useState(() => {
     let path = getPath()
@@ -128,9 +146,21 @@ let make = () => {
     setSearchTerms(current => current->Belt.Array.keepWithIndex((_, idx) => idx != index))
   }
 
+  let handleReadingPositionChange = (book: string, chapter: int, verse: int) => {
+    StateService.saveReadingPosition({book, chapter, verse})
+  }
+
   let pageFor = (~idx) =>
     switch idx {
-    | 0 => <Read selectedModuleIds availableModules onWordClick={handleWordClick} selectedWord />
+    | 0 => 
+      <Read 
+        selectedModuleIds 
+        availableModules 
+        onWordClick={handleWordClick} 
+        selectedWord 
+        initialPosition={initialState.readingPosition}
+        onPositionChange={handleReadingPositionChange}
+      />
     | 1 =>
       <Tools
         selectedWord
@@ -149,7 +179,8 @@ let make = () => {
       />
     | 3 =>
       <Settings
-        onToggle={_ => ()}
+        darkMode
+        onDarkModeChange={dark => setDarkMode(_ => dark)}
         availableModules
         selectedModuleIds
         onModuleToggle={moduleId => {
@@ -163,7 +194,15 @@ let make = () => {
         }}
         onModuleReorder={newOrder => setSelectedModuleIds(_ => newOrder)}
       />
-    | _ => <Read selectedModuleIds availableModules onWordClick={handleWordClick} selectedWord />
+    | _ => 
+      <Read 
+        selectedModuleIds 
+        availableModules 
+        onWordClick={handleWordClick} 
+        selectedWord 
+        initialPosition={initialState.readingPosition}
+        onPositionChange={handleReadingPositionChange}
+      />
     }
 
   let getPageTransform = (pageIdx: int) => {

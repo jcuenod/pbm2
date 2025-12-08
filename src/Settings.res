@@ -1,31 +1,16 @@
 @module("./jsHelpers.js")
-external getLocalStorage: string => option<string> = "getLocalStorage"
-@module("./jsHelpers.js")
-external setLocalStorage: (string, string) => unit = "setLocalStorage"
-@module("./jsHelpers.js")
 external setHtmlDark: bool => unit = "setHtmlDark"
 
 @react.component
 let make = (
-  ~onToggle=_ => (),
+  ~darkMode,
+  ~onDarkModeChange,
   ~availableModules,
   ~selectedModuleIds,
   ~onModuleToggle,
   ~onModuleReorder,
 ) => {
   let (showModuleSettings, setShowModuleSettings) = React.useState(() => false)
-  let (dark, setDark) = React.useState(() =>
-    switch getLocalStorage("dark") {
-    | Some("1") => true
-    | _ => false
-    }
-  )
-
-  // Initialize dark mode on mount
-  React.useEffect1(() => {
-    setHtmlDark(dark)
-    None
-  }, [dark])
 
   <div className="relative w-full h-full overflow-hidden bg-white dark:bg-stone-900">
     <div
@@ -51,23 +36,12 @@ let make = (
             </span>
             <button
               onClick={_ => {
-                setDark(prev => {
-                  let next = !prev
-                  setLocalStorage(
-                    "dark",
-                    if next {
-                      "1"
-                    } else {
-                      "0"
-                    },
-                  )
-                  setHtmlDark(next)
-                  onToggle(next)
-                  next
-                })
+                let next = !darkMode
+                setHtmlDark(next)
+                onDarkModeChange(next)
               }}
               className={"relative inline-flex items-center h-8 rounded-full w-14 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 " ++ if (
-                dark
+                darkMode
               ) {
                 "bg-teal-600"
               } else {
@@ -76,7 +50,7 @@ let make = (
             >
               <span
                 className={"transform transition-transform duration-200 inline-block w-6 h-6 bg-white rounded-full shadow-md " ++ if (
-                  dark
+                  darkMode
                 ) {
                   "translate-x-7"
                 } else {

@@ -30,6 +30,11 @@ export function setHtmlDark(dark) {
   }
 }
 
+export function getSystemDarkModePreference() {
+  if (typeof window === 'undefined' || !window.matchMedia) return false
+  return window.matchMedia('(prefers-color-scheme: dark)').matches
+}
+
 export function getElementIndexFromId(x, y, prefix) {
   if (typeof document === 'undefined') return null
   const element = document.elementFromPoint(x, y)

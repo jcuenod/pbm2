@@ -20,11 +20,17 @@ let make = (
   ~availableModules,
   ~onWordClick: (int, int) => unit,
   ~selectedWord: option<(int, int)>,
+  ~initialPosition: option<StateService.readingPosition>,
+  ~onPositionChange: (string, int, int) => unit,
 ) => {
   let (collapsed, setCollapsed) = React.useState(() => false)
   let (showSelector, setShowSelector) = React.useState(() => false)
-  let (currentBook, setCurrentBook) = React.useState(() => "Matt")
-  let (currentChapter, setCurrentChapter) = React.useState(() => 1)
+  let (currentBook, setCurrentBook) = React.useState(() => 
+    initialPosition->Option.map(p => p.book)->Option.getOr("Matt")
+  )
+  let (currentChapter, setCurrentChapter) = React.useState(() => 
+    initialPosition->Option.map(p => p.chapter)->Option.getOr(1)
+  )
 
   let (chapters, setChapters) = React.useState(() => [])
 
@@ -34,7 +40,12 @@ let make = (
   let (loadingNext, setLoadingNext) = React.useState(() => false)
   let (prevLoadFailed, setPrevLoadFailed) = React.useState(() => false)
   let (nextLoadFailed, setNextLoadFailed) = React.useState(() => false)
-  let (visibleChapter, setVisibleChapter) = React.useState(() => 1)
+  let (visibleChapter, setVisibleChapter) = React.useState(() => 
+    initialPosition->Option.map(p => p.chapter)->Option.getOr(1)
+  )
+  let (visibleVerse, setVisibleVerse) = React.useState(() => 
+    initialPosition->Option.map(p => p.verse)->Option.getOr(1)
+  )
   let lastY = React.useRef(0)
   let accumulatedDy = React.useRef(0) // Track accumulated scroll for smoother header behavior
   let scrollContainerRef = React.useRef(Nullable.null)
@@ -111,6 +122,12 @@ let make = (
     currentBookRef.current = currentBook
     None
   }, [currentBook])
+
+  // Save reading position when book, visible chapter, or visible verse changes
+  React.useEffect3(() => {
+    onPositionChange(currentBook, visibleChapter, visibleVerse)
+    None
+  }, (currentBook, visibleChapter, visibleVerse))
 
   React.useEffect1(() => {
     loadingPrevRef.current = loadingPrev
@@ -195,16 +212,21 @@ let make = (
     let sectionsArray: array<{..}> = chapterSections
 
     let visibleChapterNum = ref(visibleChapter)
+    let visibleVerseNum = ref(visibleVerse)
 
     // Skip visible chapter detection during initial load to prevent race conditions
     if !isInitialLoadRef.current {
       // If we are at the very top (or overscrolled), force the first chapter
       if target["scrollTop"] <= 50 {
         switch chaptersRef.current[0] {
-        | Some(c) => visibleChapterNum := c.chapter
+        | Some(c) => {
+            visibleChapterNum := c.chapter
+            visibleVerseNum := 1
+          }
         | None => ()
         }
       } else {
+        // Track visible chapter
         sectionsArray->Array.forEach(section => {
           let heading = section["querySelector"](".chapter-heading")
           if heading !== Nullable.null->Obj.magic {
@@ -222,8 +244,32 @@ let make = (
             }
           }
         })
+        
+        // Track visible verse (find first verse block in viewport)
+        let verseBlocks = containerElement["querySelectorAll"](".verse-block")
+        let verseArray: array<{..}> = verseBlocks
+        verseArray->Array.forEach(verseBlock => {
+          let rect = verseBlock["getBoundingClientRect"]()
+          // Check if verse is visible near top of viewport (below header)
+          if rect["top"] >= 64. && rect["top"] <= 200. {
+            let verseId = verseBlock["id"]
+            if verseId !== Nullable.null->Obj.magic {
+              let ridStr: string = verseId->String.replace("verse-", "")
+              switch ridStr->Int.fromString {
+              | Some(rid) => {
+                  let verse = rid->mod(1000)
+                  if verse > 0 {
+                    visibleVerseNum := verse
+                  }
+                }
+              | None => ()
+              }
+            }
+          }
+        })
       }
       setVisibleChapter(_ => visibleChapterNum.contents)
+      setVisibleVerse(_ => visibleVerseNum.contents)
     }
 
     // Infinite scroll
@@ -449,7 +495,8 @@ let make = (
 
         <div
           key={`${chapterNum->Int.toString}-${idx->Int.toString}`}
-          className="mb-6 border-b border-gray-200 dark:border-stone-700 pb-4"
+          id={`verse-${baseMatch->Option.map(m => m.rid->Int.toString)->Option.getOr("0")}`}
+          className="verse-block mb-6 border-b border-gray-200 dark:border-stone-700 pb-4"
         >
           <div
             className="grid gap-4"
@@ -541,7 +588,7 @@ let make = (
                         }
                       })
 
-                      // Adjust scroll to keep current chapter in view
+                      // Adjust scroll to restore saved verse position
                       // We need to do this after render, but since we can't easily use useLayoutEffect with async data in this structure
                       // we rely on the fact that this is the initial load and we can scroll to the specific element
                       let _ = setTimeout(() => {
@@ -549,14 +596,43 @@ let make = (
                           switch scrollContainerRef.current->Nullable.toOption {
                           | Some(container) => {
                               let element = container->Obj.magic
-                              let chapterId = `chapter-${currentChapter->Int.toString}`
-                              let chapterElement = element["querySelector"](`#${chapterId}`)
-                              if chapterElement !== Nullable.null->Obj.magic {
-                                chapterElement["scrollIntoView"]({
-                                  "behavior": "instant",
-                                  "block": "start",
-                                })
+                              
+                              // Try to scroll to saved verse if available
+                              let scrolled = switch initialPosition {
+                              | Some(pos) if pos.verse > 1 => {
+                                  // Calculate rid from book/chapter/verse
+                                  let bookIndex = switch BibleData.books->Array.findIndex(b => b.id == pos.book) {
+                                  | -1 => 0
+                                  | idx => idx + 1
+                                  }
+                                  let rid = bookIndex * 1_000_000 + pos.chapter * 1000 + pos.verse
+                                  let verseId = `verse-${rid->Int.toString}`
+                                  let verseElement = element["querySelector"](`#${verseId}`)
+                                  if verseElement !== Nullable.null->Obj.magic {
+                                    let _ = verseElement["scrollIntoView"]({
+                                      "behavior": "instant",
+                                      "block": "start",
+                                    })
+                                    true
+                                  } else {
+                                    false
+                                  }
+                                }
+                              | _ => false
                               }
+                              
+                              // Fallback to chapter if verse scroll failed
+                              if !scrolled {
+                                let chapterId = `chapter-${currentChapter->Int.toString}`
+                                let chapterElement = element["querySelector"](`#${chapterId}`)
+                                if chapterElement !== Nullable.null->Obj.magic {
+                                  chapterElement["scrollIntoView"]({
+                                    "behavior": "instant",
+                                    "block": "start",
+                                  })
+                                }
+                              }
+                              
                               // Clear initial load flag after scroll adjustment
                               let _ = setTimeout(
                                 () => {

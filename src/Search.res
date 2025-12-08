@@ -245,9 +245,9 @@ let make = (
     None
   }, (searchTerms, selectedModuleIds))
 
-  // Fetch search results when searchTerms or selectedModuleIds change
-  React.useEffect3(() => {
-    if searchTerms->Array.length > 0 && selectedModuleIds->Array.length > 0 {
+  // Fetch search results when searchTerms, selectedModuleIds, or availableModules change
+  React.useEffect4(() => {
+    if searchTerms->Array.length > 0 && selectedModuleIds->Array.length > 0 && availableModules->Array.length > 0 {
       setLoading(_ => true)
       setError(_ => None)
 
@@ -285,7 +285,7 @@ let make = (
       setResultCount(_ => 0)
     }
     None
-  }, (searchTerms, selectedModuleIds, currentPage))
+  }, (searchTerms, selectedModuleIds, currentPage, availableModules))
 
   let scrollContainerRef = React.useRef(Nullable.null)
 
