@@ -37,12 +37,12 @@ let make = (
         "translate-x-0"
       }}
     >
-      <div className="h-full overflow-y-auto p-6">
+      <div className="h-full overflow-y-auto">
         <div className="p-4 border-b border-gray-200 dark:border-stone-800">
           <h1 className="text-2xl font-bold mb-2"> {React.string("Settings")} </h1>
         </div>
 
-        <div className="space-y-4 mt-4">
+        <div className="space-y-4 mt-2 p-4">
           <div
             className="flex items-center justify-between px-4 h-16 bg-gray-50 dark:bg-stone-800 rounded-lg"
           >
