@@ -76,6 +76,7 @@ let make = (
   ~onDeleteSearchTerm: int => unit,
   ~onWordClick: (int, int) => unit,
   ~selectedWord: option<(int, int)>,
+  ~baseModuleId: option<int>,
 ) => {
   let (searchResults, setSearchResults) = React.useState(() => None)
   let (loading, setLoading) = React.useState(() => false)
@@ -246,14 +247,22 @@ let make = (
   }, (searchTerms, selectedModuleIds))
 
   // Fetch search results when searchTerms, selectedModuleIds, or availableModules change
-  React.useEffect4(() => {
+  React.useEffect5(() => {
     if searchTerms->Array.length > 0 && selectedModuleIds->Array.length > 0 && availableModules->Array.length > 0 {
       setLoading(_ => true)
       setError(_ => None)
 
       let fetchData = async () => {
+        // Reorder modules: base module first, then others in selected order
+        let orderedModuleIds = switch baseModuleId {
+        | Some(baseId) => 
+          let others = selectedModuleIds->Array.filter(id => id != baseId)
+          [baseId]->Array.concat(others)
+        | None => selectedModuleIds
+        }
+
         let modulesStr =
-          selectedModuleIds
+          orderedModuleIds
           ->Array.filterMap(id => {
             availableModules
             ->Array.find((m: ParabibleApi.moduleInfo) => m.moduleId == id)
@@ -285,7 +294,7 @@ let make = (
       setResultCount(_ => 0)
     }
     None
-  }, (searchTerms, selectedModuleIds, currentPage, availableModules))
+  }, (searchTerms, selectedModuleIds, currentPage, availableModules, baseModuleId))
 
   let scrollContainerRef = React.useRef(Nullable.null)
 

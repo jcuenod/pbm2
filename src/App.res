@@ -202,6 +202,7 @@ let make = () => {
         onDeleteSearchTerm={handleDeleteSearchTerm}
         onWordClick={handleWordClick}
         selectedWord
+        baseModuleId
       />
     | 3 =>
       <Settings

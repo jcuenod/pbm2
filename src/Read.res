@@ -596,7 +596,7 @@ let make = (
     </div>
   }
 
-  React.useEffect4(() => {
+  React.useEffect5(() => {
     let cancelled = ref(false)
     if selectedModuleIds->Array.length > 0 && availableModules->Array.length > 0 {
       isInitialLoadRef.current = true
@@ -677,7 +677,7 @@ let make = (
       let _ = fetchData()
     }
     Some(() => {cancelled := true})
-  }, (currentBook, currentChapter, selectedModuleIds, availableModules))
+  }, (currentBook, currentChapter, selectedModuleIds, availableModules, baseModuleId))
 
   let reference = {
     let bookName =
