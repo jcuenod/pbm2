@@ -54,6 +54,13 @@ let make = (
   let (scrollToChapterAfterLoad, setScrollToChapterAfterLoad) = React.useState(() => None)
 
   let isProgrammaticScrollRef = React.useRef(false)
+  let shouldRestorePositionRef = React.useRef(true)
+  let hasPerformedInitialScrollRef = React.useRef(false)
+
+  React.useEffect1(() => {
+    shouldRestorePositionRef.current = true
+    None
+  }, [initialPosition])
 
   let scrollToChapter = (chapterNum: int) => {
     switch scrollContainerRef.current->Nullable.toOption {
@@ -62,6 +69,7 @@ let make = (
         let chapterElement = element["querySelector"](`#chapter-${chapterNum->Int.toString}`)
         if chapterElement !== Nullable.null->Obj.magic {
           isProgrammaticScrollRef.current = true
+          accumulatedDy.current = 0
           let _ = chapterElement["scrollIntoView"]({"behavior": "smooth"})
           // Reset after a delay to allow smooth scroll to complete
           let _ = setTimeout(() => {isProgrammaticScrollRef.current = false}, 1000)
@@ -113,9 +121,51 @@ let make = (
       | None => ()
       }
       scrollAdjustmentRef.current = None
-      None
-    | None => None
+    | None => ()
     }
+
+    if isInitialLoadRef.current && shouldRestorePositionRef.current && !hasPerformedInitialScrollRef.current {
+      switch (scrollContainerRef.current->Nullable.toOption, initialPosition) {
+      | (Some(container), Some(pos)) =>
+        let element = container->Obj.magic
+        
+        // Calculate rid from book/chapter/verse
+        let bookIndex = switch BibleData.books->Array.findIndex(b => b.id == pos.book) {
+        | -1 => 0
+        | idx => idx + 1
+        }
+        let rid = bookIndex * 1_000_000 + pos.chapter * 1000 + pos.verse
+        let verseId = `verse-${rid->Int.toString}`
+        let verseElement = element["querySelector"](`#${verseId}`)
+        
+        if verseElement !== Nullable.null->Obj.magic {
+           isProgrammaticScrollRef.current = true
+           accumulatedDy.current = 0
+           let _ = verseElement["scrollIntoView"]({
+             "behavior": "instant",
+             "block": "start",
+           })
+           hasPerformedInitialScrollRef.current = true
+           let _ = setTimeout(() => {isProgrammaticScrollRef.current = false}, 500)
+        } else {
+           // Fallback to chapter if verse scroll failed
+           let chapterId = `chapter-${pos.chapter->Int.toString}`
+           let chapterElement = element["querySelector"](`#${chapterId}`)
+           if chapterElement !== Nullable.null->Obj.magic {
+             isProgrammaticScrollRef.current = true
+             accumulatedDy.current = 0
+             let _ = chapterElement["scrollIntoView"]({
+               "behavior": "instant",
+               "block": "start",
+             })
+             hasPerformedInitialScrollRef.current = true
+             let _ = setTimeout(() => {isProgrammaticScrollRef.current = false}, 500)
+           }
+        }
+      | _ => ()
+      }
+    }
+    None
   }, [chapters])
 
   React.useEffect1(() => {
@@ -452,6 +502,7 @@ let make = (
   }
 
   let handleBookChapterSelect = (book: BibleData.book, chapter: int) => {
+    shouldRestorePositionRef.current = false
     setCurrentBook(_ => book.id)
     setCurrentChapter(_ => chapter)
     setVisibleChapter(_ => chapter) // Reset visible chapter immediately to prevent stale display
@@ -539,6 +590,7 @@ let make = (
     let cancelled = ref(false)
     if selectedModuleIds->Array.length > 0 && availableModules->Array.length > 0 {
       isInitialLoadRef.current = true
+      hasPerformedInitialScrollRef.current = false
       setLoading(_ => true)
       setError(_ => None)
       setVisibleChapter(_ => currentChapter)
@@ -593,56 +645,7 @@ let make = (
                       // we rely on the fact that this is the initial load and we can scroll to the specific element
                       let _ = setTimeout(() => {
                         if !cancelled.contents {
-                          switch scrollContainerRef.current->Nullable.toOption {
-                          | Some(container) => {
-                              let element = container->Obj.magic
-                              
-                              // Try to scroll to saved verse if available
-                              let scrolled = switch initialPosition {
-                              | Some(pos) if pos.verse > 1 => {
-                                  // Calculate rid from book/chapter/verse
-                                  let bookIndex = switch BibleData.books->Array.findIndex(b => b.id == pos.book) {
-                                  | -1 => 0
-                                  | idx => idx + 1
-                                  }
-                                  let rid = bookIndex * 1_000_000 + pos.chapter * 1000 + pos.verse
-                                  let verseId = `verse-${rid->Int.toString}`
-                                  let verseElement = element["querySelector"](`#${verseId}`)
-                                  if verseElement !== Nullable.null->Obj.magic {
-                                    let _ = verseElement["scrollIntoView"]({
-                                      "behavior": "instant",
-                                      "block": "start",
-                                    })
-                                    true
-                                  } else {
-                                    false
-                                  }
-                                }
-                              | _ => false
-                              }
-                              
-                              // Fallback to chapter if verse scroll failed
-                              if !scrolled {
-                                let chapterId = `chapter-${currentChapter->Int.toString}`
-                                let chapterElement = element["querySelector"](`#${chapterId}`)
-                                if chapterElement !== Nullable.null->Obj.magic {
-                                  chapterElement["scrollIntoView"]({
-                                    "behavior": "instant",
-                                    "block": "start",
-                                  })
-                                }
-                              }
-                              
-                              // Clear initial load flag after scroll adjustment
-                              let _ = setTimeout(
-                                () => {
-                                  isInitialLoadRef.current = false
-                                },
-                                100,
-                              )
-                            }
-                          | None => isInitialLoadRef.current = false
-                          }
+                          isInitialLoadRef.current = false
                         } else {
                           isInitialLoadRef.current = false
                         }
