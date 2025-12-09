@@ -22,6 +22,7 @@ let make = (
   ~selectedWord: option<(int, int)>,
   ~initialPosition: option<StateService.readingPosition>,
   ~onPositionChange: (string, int, int) => unit,
+  ~baseModuleId: option<int>,
 ) => {
   let (collapsed, setCollapsed) = React.useState(() => false)
   let (showSelector, setShowSelector) = React.useState(() => false)
@@ -217,8 +218,17 @@ let make = (
     string,
   > => {
     let reference = `${book}${chapter->Int.toString}`
+    
+    // Reorder modules: base module first, then others in selected order
+    let orderedModuleIds = switch baseModuleId {
+    | Some(baseId) => 
+      let others = selectedModuleIds->Array.filter(id => id != baseId)
+      [baseId]->Array.concat(others)
+    | None => selectedModuleIds
+    }
+
     let modulesString =
-      selectedModuleIds
+      orderedModuleIds
       ->Array.filterMap(id => {
         availableModules
         ->Array.find((m: ParabibleApi.moduleInfo) => m.moduleId == id)
@@ -528,11 +538,11 @@ let make = (
       acc
     })
 
-    let activeModuleIds = hasContent->Dict.keysToArray
+    let activeModuleIds = selectedModuleIds->Array.filter(id => hasContent->Dict.get(id->Int.toString)->Option.isSome)
     let chapterId = `chapter-${chapterNum->Int.toString}`
 
-    // Base module ID is the first selected module
-    let baseModuleId = selectedModuleIds[0]->Option.getOr(0)
+    // Base module ID
+    let effectiveBaseModuleId = baseModuleId->Option.orElse(selectedModuleIds[0])->Option.getOr(0)
 
     <div key={chapterNum->Int.toString} id={chapterId} className="chapter-section">
       <div className="py-2 mb-4 chapter-heading">
@@ -542,7 +552,7 @@ let make = (
       </div>
       {data
       ->Array.mapWithIndex((verseGroup, idx) => {
-        let baseMatch = verseGroup->Array.find(m => m.moduleId == baseModuleId)
+        let baseMatch = verseGroup->Array.find(m => m.moduleId == effectiveBaseModuleId)
 
         <div
           key={`${chapterNum->Int.toString}-${idx->Int.toString}`}
@@ -558,8 +568,8 @@ let make = (
             }}
           >
             {activeModuleIds
-            ->Array.map(moduleIdStr => {
-              let moduleId = moduleIdStr->Int.fromString->Option.getOr(0)
+            ->Array.map(moduleId => {
+              let moduleIdStr = moduleId->Int.toString
               let matchForModule = verseGroup->Array.find(m => m.moduleId == moduleId)
 
               let moduleAbbrev =

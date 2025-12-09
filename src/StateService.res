@@ -23,6 +23,7 @@ type appState = {
   searchTerms: array<ParabibleApi.searchTermData>,
   darkMode: bool,
   selectedModuleIds: array<int>,
+  baseModuleId: option<int>,
 }
 
 // Keys for localStorage
@@ -31,6 +32,7 @@ let keySelectedWord = "selectedWord"
 let keySearchTerms = "searchTerms"
 let keyDarkMode = "darkMode"
 let keySelectedModules = "selectedModules"
+let keyBaseModuleId = "baseModuleId"
 
 // Parse JSON helpers
 let parseReadingPosition = (jsonStr: string): option<readingPosition> => {
@@ -165,6 +167,12 @@ let loadSelectedModuleIds = (): array<int> => {
   ->Option.getOr([])
 }
 
+let loadBaseModuleId = (): option<int> => {
+  getLocalStorage(keyBaseModuleId)
+  ->Nullable.toOption
+  ->Option.flatMap(str => Int.fromString(str))
+}
+
 // Save state to localStorage
 let saveReadingPosition = (position: readingPosition): unit => {
   let json = JSON.stringifyAny({
@@ -217,6 +225,13 @@ let saveSelectedModuleIds = (ids: array<int>): unit => {
   }
 }
 
+let saveBaseModuleId = (id: option<int>): unit => {
+  switch id {
+  | Some(val) => setLocalStorage(keyBaseModuleId, val->Int.toString)
+  | None => setLocalStorage(keyBaseModuleId, "")
+  }
+}
+
 // Load entire app state
 let loadAppState = (): appState => {
   {
@@ -225,5 +240,6 @@ let loadAppState = (): appState => {
     searchTerms: loadSearchTerms(),
     darkMode: loadDarkMode(),
     selectedModuleIds: loadSelectedModuleIds(),
+    baseModuleId: loadBaseModuleId(),
   }
 }

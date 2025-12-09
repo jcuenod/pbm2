@@ -2,7 +2,7 @@
 external getElementIndexFromId: (float, float, string) => Nullable.t<int> = "getElementIndexFromId"
 
 @react.component
-let make = (~availableModules, ~selectedModuleIds, ~onModuleToggle, ~onReorder, ~onBack) => {
+let make = (~availableModules, ~selectedModuleIds, ~onModuleToggle, ~onReorder, ~onBack, ~baseModuleId, ~onBaseModuleChange) => {
   let (draggingIndex, setDraggingIndex) = React.useState(() => None)
 
   // Sort selected modules by their current order
@@ -128,6 +128,25 @@ let make = (~availableModules, ~selectedModuleIds, ~onModuleToggle, ~onReorder, 
                     </svg>
                   </div>
                   <span className="flex-1 font-medium"> {React.string(module_.abbreviation)} </span>
+                  <button
+                    onClick={_ => onBaseModuleChange(module_.moduleId)}
+                    className={"p-1 rounded transition-colors " ++ (
+                      baseModuleId == Some(module_.moduleId)
+                        ? "text-teal-600"
+                        : "text-gray-300 hover:text-teal-600 active:scale-80 transition-transform"
+                    )}
+                    ariaLabel="Set as base module"
+                  >
+                    <svg
+                      className="w-5 h-5"
+                      stroke="currentColor"
+                      strokeWidth="0"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      ><path fill="currentColor" d="M12 22.5q-.325 0-.625-.1t-.575-.3l-6-4.5q-.375-.275-.587-.7T4 16V4q0-.825.588-1.412T6 2h12q.825 0 1.413.588T20 4v12q0 .475-.213.9t-.587.7l-6 4.5q-.275.2-.575.3t-.625.1m-1.05-10.35l-1.4-1.4q-.3-.3-.7-.287t-.7.287q-.3.3-.312.713t.287.712L10.25 14.3q.3.3.7.3t.7-.3l4.25-4.25q.3-.3.287-.7t-.287-.7q-.3-.3-.712-.312t-.713.287z"/></svg>
+                  </button>
                   <button
                     onClick={_ => onModuleToggle(module_.moduleId)}
                     className="p-1 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"

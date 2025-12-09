@@ -9,6 +9,8 @@ let make = (
   ~selectedModuleIds,
   ~onModuleToggle,
   ~onModuleReorder,
+  ~baseModuleId,
+  ~onBaseModuleChange,
 ) => {
   let (showModuleSettings, setShowModuleSettings) = React.useState(() => false)
 
@@ -89,6 +91,8 @@ let make = (
         onModuleToggle
         onReorder={onModuleReorder}
         onBack={() => setShowModuleSettings(_ => false)}
+        baseModuleId
+        onBaseModuleChange
       />
     </div>
   </div>

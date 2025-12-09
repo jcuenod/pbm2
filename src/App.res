@@ -34,6 +34,9 @@ let make = () => {
   // Dark mode state
   let (darkMode, setDarkMode) = React.useState(() => initialState.darkMode)
 
+  // Base module state
+  let (baseModuleId, setBaseModuleId) = React.useState(() => initialState.baseModuleId)
+
   // Load modules on mount
   React.useEffect0(() => {
     let fetchData = async () => {
@@ -89,6 +92,28 @@ let make = () => {
     StateService.saveDarkMode(darkMode)
     None
   }, [darkMode])
+
+  // Ensure base module is valid
+  React.useEffect2(() => {
+    switch baseModuleId {
+    | Some(id) =>
+      if !(selectedModuleIds->Array.includes(id)) {
+        // Base module was removed, select a new one (first available)
+        setBaseModuleId(_ => selectedModuleIds[0])
+      }
+    | None =>
+      if selectedModuleIds->Array.length > 0 {
+        setBaseModuleId(_ => Some(selectedModuleIds[0]->Option.getOr(0)))
+      }
+    }
+    None
+  }, (selectedModuleIds, baseModuleId))
+
+  // Save base module
+  React.useEffect1(() => {
+    StateService.saveBaseModuleId(baseModuleId)
+    None
+  }, [baseModuleId])
 
   let (index, setIndex) = React.useState(() => {
     let path = getPath()
@@ -160,6 +185,7 @@ let make = () => {
         selectedWord 
         initialPosition={initialState.readingPosition}
         onPositionChange={handleReadingPositionChange}
+        baseModuleId
       />
     | 1 =>
       <Tools
@@ -193,6 +219,8 @@ let make = () => {
           })
         }}
         onModuleReorder={newOrder => setSelectedModuleIds(_ => newOrder)}
+        baseModuleId
+        onBaseModuleChange={id => setBaseModuleId(_ => Some(id))}
       />
     | _ => 
       <Read 
@@ -202,6 +230,7 @@ let make = () => {
         selectedWord 
         initialPosition={initialState.readingPosition}
         onPositionChange={handleReadingPositionChange}
+        baseModuleId
       />
     }
 
