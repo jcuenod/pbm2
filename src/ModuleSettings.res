@@ -126,6 +126,8 @@ let make = (~availableModules, ~selectedModuleIds, ~onModuleToggle, ~onReorder, 
       <span className="flex-1 font-medium"> {React.string(module_.abbreviation)} </span>
       <button
         onClick={_ => onBaseModuleChange(module_.moduleId)}
+        onPointerDown={e => e->ReactEvent.Pointer.stopPropagation}
+        onTouchStart={e => e->ReactEvent.Touch.stopPropagation}
         className={"p-1 rounded transition-colors " ++ (
           baseModuleId == Some(module_.moduleId)
             ? "text-teal-600"
@@ -145,6 +147,8 @@ let make = (~availableModules, ~selectedModuleIds, ~onModuleToggle, ~onReorder, 
       </button>
       <button
         onClick={_ => onModuleToggle(module_.moduleId)}
+        onPointerDown={e => e->ReactEvent.Pointer.stopPropagation}
+        onTouchStart={e => e->ReactEvent.Touch.stopPropagation}
         className="p-1 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
         ariaLabel="Remove"
       >
