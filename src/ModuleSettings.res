@@ -52,6 +52,8 @@ module SortableItem = {
   }
 }
 
+let stopPointerPropagation = event => event->ReactEvent.Pointer.stopPropagation
+
 @react.component
 let make = (~availableModules, ~selectedModuleIds, ~onModuleToggle, ~onReorder, ~onBack, ~baseModuleId, ~onBaseModuleChange) => {
   let (activeId, setActiveId) = React.useState(() => None)
@@ -64,7 +66,7 @@ let make = (~availableModules, ~selectedModuleIds, ~onModuleToggle, ~onReorder, 
     }),
     DndKit.Core.useSensor(DndKit.Core.touchSensor, ~options={
       "activationConstraint": {
-        "delay": 10,
+        "delay": 60,
         "tolerance": 5
       }
     }),
@@ -125,9 +127,8 @@ let make = (~availableModules, ~selectedModuleIds, ~onModuleToggle, ~onReorder, 
       </div>
       <span className="flex-1 font-medium"> {React.string(module_.abbreviation)} </span>
       <button
+        onPointerDown={stopPointerPropagation}
         onClick={_ => onBaseModuleChange(module_.moduleId)}
-        onPointerDown={e => e->ReactEvent.Pointer.stopPropagation}
-        onTouchStart={e => e->ReactEvent.Touch.stopPropagation}
         className={"p-1 rounded transition-colors " ++ (
           baseModuleId == Some(module_.moduleId)
             ? "text-teal-600"
@@ -146,9 +147,8 @@ let make = (~availableModules, ~selectedModuleIds, ~onModuleToggle, ~onReorder, 
           ><path fill="currentColor" d="M12 22.5q-.325 0-.625-.1t-.575-.3l-6-4.5q-.375-.275-.587-.7T4 16V4q0-.825.588-1.412T6 2h12q.825 0 1.413.588T20 4v12q0 .475-.213.9t-.587.7l-6 4.5q-.275.2-.575.3t-.625.1m-1.05-10.35l-1.4-1.4q-.3-.3-.7-.287t-.7.287q-.3.3-.312.713t.287.712L10.25 14.3q.3.3.7.3t.7-.3l4.25-4.25q.3-.3.287-.7t-.287-.7q-.3-.3-.712-.312t-.713.287z"/></svg>
       </button>
       <button
+        onPointerDown={stopPointerPropagation}
         onClick={_ => onModuleToggle(module_.moduleId)}
-        onPointerDown={e => e->ReactEvent.Pointer.stopPropagation}
-        onTouchStart={e => e->ReactEvent.Touch.stopPropagation}
         className="p-1 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
         ariaLabel="Remove"
       >

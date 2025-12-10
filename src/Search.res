@@ -462,13 +462,58 @@ let make = (
                 | None => None
                 }
               })
-              switch moduleColumns->Array.length {
+              let orderedColumns =
+                if selectedModuleIds->Array.length > 0 {
+                  let prioritized =
+                    selectedModuleIds
+                    ->Array.filterMap(moduleId =>
+                      moduleColumns->Array.find(((existingId, _, _)) => existingId == moduleId)
+                    )
+                  if prioritized->Array.length > 0 {
+                    let leftovers =
+                      moduleColumns
+                      ->Array.filter(((moduleId, _, _)) =>
+                        !(selectedModuleIds->Array.includes(moduleId))
+                      )
+                    Array.concat(prioritized, leftovers)
+                  } else {
+                    moduleColumns
+                  }
+                } else {
+                  moduleColumns
+                }
+
+              switch orderedColumns->Array.length {
               | 0 => React.null
               | columnCount => {
+                  let effectiveBaseModuleId =
+                    baseModuleId
+                    ->Option.flatMap(id =>
+                      if selectedModuleIds->Array.includes(id) {
+                        Some(id)
+                      } else {
+                        None
+                      }
+                    )
+                    ->Option.orElse(selectedModuleIds->Array.get(0))
+                    ->Option.orElse(
+                      orderedColumns
+                      ->Array.get(0)
+                      ->Option.map(((moduleId, _, _)) => moduleId)
+                    )
+
                   let baseMatch =
-                    moduleColumns
-                    ->Array.find(((_, _, matches)) => matches->Array.length > 0)
-                    ->Option.flatMap(((_, _, matches)) => matches->Array.get(0))
+                    effectiveBaseModuleId
+                    ->Option.flatMap(baseId =>
+                      orderedColumns
+                      ->Array.find(((moduleId, _, _)) => moduleId == baseId)
+                      ->Option.flatMap(((_, _, matches)) => matches->Array.get(0))
+                    )
+                    ->Option.orElse(
+                      orderedColumns
+                      ->Array.get(0)
+                      ->Option.flatMap(((_, _, matches)) => matches->Array.get(0))
+                    )
                   let referenceLabel = formatReference(baseMatch)
                   <div
                     key={rowIdx->Int.toString}
@@ -487,7 +532,7 @@ let make = (
                         gridTemplateColumns: `repeat(${columnCount->Int.toString}, minmax(0, 1fr))`,
                       }}
                     >
-                      {moduleColumns
+                      {orderedColumns
                       ->Array.map(((moduleId, moduleAbbrev, matches)) => {
                         <div
                           key={`${rowIdx->Int.toString}-${moduleId->Int.toString}`}
