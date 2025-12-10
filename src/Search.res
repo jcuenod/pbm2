@@ -67,6 +67,37 @@ let formatReference = (match: option<ParabibleApi.matchingText>): option<string>
   | None => None
   }
 
+type section = OT | NT | ApostolicFathers | Unknown
+
+let getSection = (bookIndex: int) => {
+  if bookIndex >= 1 && bookIndex <= 39 {
+    OT
+  } else if bookIndex >= 40 && bookIndex <= 66 {
+    NT
+  } else if bookIndex >= 99 {
+    ApostolicFathers
+  } else {
+    Unknown
+  }
+}
+
+let getSectionName = (section: section) => {
+  switch section {
+  | OT => "Old Testament"
+  | NT => "New Testament"
+  | ApostolicFathers => "Apostolic Fathers"
+  | Unknown => "Other"
+  }
+}
+
+let getRowBookIndex = (row: array<array<ParabibleApi.matchingText>>) => {
+  row
+  ->Array.find(moduleMatches => moduleMatches->Array.length > 0)
+  ->Option.flatMap(moduleMatches => moduleMatches->Array.get(0))
+  ->Option.map(match => match.rid / 1_000_000)
+  ->Option.getOr(0)
+}
+
 @react.component
 let make = (
   ~searchTerms: array<ParabibleApi.searchTermData>,
@@ -448,118 +479,153 @@ let make = (
         </div>
       | (false, None, Some(results)) => {
           let highlightPairs = results.matchingWords->Array.map(mw => (mw.wid, mw.moduleId))
-          <div className="space-y-4">
-            {results.matchingText
-            ->Array.mapWithIndex((row, rowIdx) => {
-              let moduleColumns = row->Array.filterMap(moduleResults => {
-                let matches = moduleResults->Array.filter(hasRenderableContent)
-                switch matches->Array.get(0) {
-                | Some(firstMatch) => {
-                    let moduleId = firstMatch.moduleId
-                    let moduleAbbrev = getModuleAbbrev(moduleId)
-                    Some((moduleId, moduleAbbrev, matches))
+          
+          let groupedRows = results.matchingText->Array.reduce([], (acc, row) => {
+            let rowBookIndex = getRowBookIndex(row)
+            let rowSection = getSection(rowBookIndex)
+            
+            switch acc->Array.get(acc->Array.length - 1) {
+            | Some((lastSection, lastRows)) if lastSection == rowSection =>
+                lastRows->Array.push(row)
+                acc
+            | _ =>
+                acc->Array.push((rowSection, [row]))
+                acc
+            }
+          })
+
+          <div className="space-y-8">
+            {groupedRows
+            ->Array.map(((section, rows)) => {
+              let presentModuleIds = rows->Array.reduce([], (acc, row) => {
+                row->Array.forEach(moduleResults => {
+                  let matches = moduleResults->Array.filter(hasRenderableContent)
+                  switch matches->Array.get(0) {
+                  | Some(firstMatch) =>
+                    let id = firstMatch.moduleId
+                    if !(acc->Array.includes(id)) {
+                      acc->Array.push(id)
+                    }
+                  | None => ()
                   }
-                | None => None
-                }
+                })
+                acc
               })
-              let orderedColumns =
-                if selectedModuleIds->Array.length > 0 {
-                  let prioritized =
-                    selectedModuleIds
-                    ->Array.filterMap(moduleId =>
-                      moduleColumns->Array.find(((existingId, _, _)) => existingId == moduleId)
-                    )
-                  if prioritized->Array.length > 0 {
-                    let leftovers =
-                      moduleColumns
-                      ->Array.filter(((moduleId, _, _)) =>
-                        !(selectedModuleIds->Array.includes(moduleId))
-                      )
-                    Array.concat(prioritized, leftovers)
-                  } else {
-                    moduleColumns
-                  }
-                } else {
-                  moduleColumns
-                }
 
-              switch orderedColumns->Array.length {
-              | 0 => React.null
-              | columnCount => {
-                  let effectiveBaseModuleId =
-                    baseModuleId
-                    ->Option.flatMap(id =>
-                      if selectedModuleIds->Array.includes(id) {
-                        Some(id)
-                      } else {
-                        None
-                      }
-                    )
-                    ->Option.orElse(selectedModuleIds->Array.get(0))
-                    ->Option.orElse(
-                      orderedColumns
-                      ->Array.get(0)
-                      ->Option.map(((moduleId, _, _)) => moduleId)
-                    )
+              let sectionModuleIds =
+                selectedModuleIds->Array.filter(id => presentModuleIds->Array.includes(id))
+              
+              let columnCount = sectionModuleIds->Array.length
 
-                  let baseMatch =
-                    effectiveBaseModuleId
-                    ->Option.flatMap(baseId =>
-                      orderedColumns
-                      ->Array.find(((moduleId, _, _)) => moduleId == baseId)
-                      ->Option.flatMap(((_, _, matches)) => matches->Array.get(0))
-                    )
-                    ->Option.orElse(
-                      orderedColumns
-                      ->Array.get(0)
-                      ->Option.flatMap(((_, _, matches)) => matches->Array.get(0))
-                    )
-                  let referenceLabel = formatReference(baseMatch)
-                  <div
-                    key={rowIdx->Int.toString}
-                    className="border border-gray-200 dark:border-stone-800 p-4"
-                  >
-                    {switch referenceLabel {
-                    | Some(label) =>
-                      <div className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-3">
-                        {React.string(label)}
-                      </div>
-                    | None => React.null
-                    }}
-                    <div
-                      className="grid gap-4"
-                      style={{
-                        gridTemplateColumns: `repeat(${columnCount->Int.toString}, minmax(0, 1fr))`,
-                      }}
-                    >
-                      {orderedColumns
-                      ->Array.map(((moduleId, moduleAbbrev, matches)) => {
-                        <div
-                          key={`${rowIdx->Int.toString}-${moduleId->Int.toString}`}
-                          className="space-y-3"
-                        >
-                          {matches
-                          ->Array.map(
-                            match => {
-                              <VerseColumn
-                                key={`${moduleId->Int.toString}-${match.rid->Int.toString}`}
-                                match={Some(match)}
-                                baseMatch={baseMatch}
-                                moduleId
-                                moduleAbbrev
-                                selectedWord
-                                onWordClick
-                                highlightWords=?Some(highlightPairs)
-                              />
-                            },
+              if columnCount == 0 {
+                React.null
+              } else {
+                <div key={getSectionName(section)}>
+                  <h2 className="text-xl font-bold mb-4 px-4 text-stone-800 dark:text-stone-200">
+                    {React.string(getSectionName(section))}
+                  </h2>
+                  <div className="space-y-4">
+                    {rows
+                    ->Array.mapWithIndex((row, rowIdx) => {
+                      let effectiveBaseModuleId =
+                        baseModuleId
+                        ->Option.flatMap(id =>
+                          if selectedModuleIds->Array.includes(id) {
+                            Some(id)
+                          } else {
+                            None
+                          }
+                        )
+                        ->Option.orElse(selectedModuleIds->Array.get(0))
+                        ->Option.orElse(sectionModuleIds->Array.get(0))
+
+                      let baseMatch =
+                        effectiveBaseModuleId
+                        ->Option.flatMap(baseId =>
+                          row
+                          ->Array.find(moduleResults =>
+                            moduleResults->Array.some(m => m.moduleId == baseId)
                           )
+                          ->Option.flatMap(matches => matches->Array.get(0))
+                        )
+                        ->Option.orElse(
+                          row
+                          ->Array.find(moduleResults => moduleResults->Array.length > 0)
+                          ->Option.flatMap(matches => matches->Array.get(0))
+                        )
+
+                      let referenceLabel = formatReference(baseMatch)
+
+                      <div
+                        key={rowIdx->Int.toString}
+                        className="border border-gray-200 dark:border-stone-800 p-4"
+                      >
+                        {switch referenceLabel {
+                        | Some(label) =>
+                          <div
+                            className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-3"
+                          >
+                            {React.string(label)}
+                          </div>
+                        | None => React.null
+                        }}
+                        <div
+                          className="grid gap-4"
+                          style={{
+                            gridTemplateColumns: `repeat(${columnCount->Int.toString}, minmax(0, 1fr))`,
+                          }}
+                        >
+                          {sectionModuleIds
+                          ->Array.map(moduleId => {
+                            let moduleAbbrev = getModuleAbbrev(moduleId)
+                            let matches =
+                              row
+                              ->Array.find(moduleResults =>
+                                moduleResults->Array.some(m => m.moduleId == moduleId)
+                              )
+                              ->Option.map(ms => ms->Array.filter(hasRenderableContent))
+                              ->Option.getOr([])
+
+                            <div
+                              key={`${rowIdx->Int.toString}-${moduleId->Int.toString}`}
+                              className="space-y-3"
+                            >
+                              {if matches->Array.length > 0 {
+                                matches
+                                ->Array.map(match => {
+                                  <VerseColumn
+                                    key={`${moduleId->Int.toString}-${match.rid->Int.toString}`}
+                                    match={Some(match)}
+                                    baseMatch={baseMatch}
+                                    moduleId
+                                    moduleAbbrev
+                                    selectedWord
+                                    onWordClick
+                                    highlightWords=?Some(highlightPairs)
+                                  />
+                                })
+                                ->React.array
+                              } else {
+                                <VerseColumn
+                                  key={`${moduleId->Int.toString}-empty`}
+                                  match={None}
+                                  baseMatch={baseMatch}
+                                  moduleId
+                                  moduleAbbrev
+                                  selectedWord
+                                  onWordClick
+                                  highlightWords=?Some(highlightPairs)
+                                />
+                              }}
+                            </div>
+                          })
                           ->React.array}
                         </div>
-                      })
-                      ->React.array}
-                    </div>
+                      </div>
+                    })
+                    ->React.array}
                   </div>
-                }
+                </div>
               }
             })
             ->React.array}
