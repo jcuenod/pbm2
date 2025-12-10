@@ -46,12 +46,12 @@ let make = (
   | None => ""
   }
 
-  let verseNumClass = if isChapterDiff {
-    "text-orange-500 dark:text-orange-400 border-2 border-orange-500 dark:border-orange-400 rounded-full px-1.5 py-0.5 text-xs font-bold mb-1 inline-block align-middle me-1"
+  let verseNumClass = "font-sans text-xs rounded-full px-1.5 py-0.5 text-xs font-bold mb-1 inline-block align-middle me-1 " ++ if isChapterDiff {
+    "text-orange-500 dark:text-orange-400 border-2 border-orange-500 dark:border-orange-400"
   } else if isVerseDiff {
-    "text-white bg-orange-500 dark:bg-orange-600 rounded-full px-1.5 py-0.5 text-xs font-bold mb-1 inline-block align-middle me-1"
+    "text-white bg-orange-500 dark:bg-orange-600"
   } else {
-    "text-orange-500 dark:text-orange-400 font-bold mb-1 -top-1 relative pe-1 font-sans text-xs"
+    "text-orange-500 dark:text-orange-400"
   }
 
   <div key={moduleId->Int.toString} className={columnClass}>
