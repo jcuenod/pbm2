@@ -64,7 +64,7 @@ let make = (~availableModules, ~selectedModuleIds, ~onModuleToggle, ~onReorder, 
     }),
     DndKit.Core.useSensor(DndKit.Core.touchSensor, ~options={
       "activationConstraint": {
-        "delay": 60,
+        "delay": 10,
         "tolerance": 5
       }
     }),
