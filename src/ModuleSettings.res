@@ -64,7 +64,7 @@ let make = (~availableModules, ~selectedModuleIds, ~onModuleToggle, ~onReorder, 
     }),
     DndKit.Core.useSensor(DndKit.Core.touchSensor, ~options={
       "activationConstraint": {
-        "delay": 250,
+        "delay": 60,
         "tolerance": 5
       }
     }),
@@ -108,7 +108,7 @@ let make = (~availableModules, ~selectedModuleIds, ~onModuleToggle, ~onReorder, 
   
   let renderModuleItem = (module_: ParabibleApi.moduleInfo, ~isOverlay=false) => {
     <div
-      className={"flex items-center gap-3 p-3 bg-gray-50 dark:bg-stone-800 rounded-lg border-2 " ++
+      className={"flex items-center gap-3 p-3 bg-gray-50 dark:bg-stone-800 rounded-lg border-2 touch-manipulation " ++
       (isOverlay
         ? "border-blue-500 shadow-lg"
         : "border-transparent hover:border-gray-300 dark:hover:border-stone-600") ++ " transition-all"}
