@@ -83,8 +83,8 @@ let make = (
                   " text-blue-600 dark:text-blue-400"
                 } else {
                   switch word.temp {
-                  | Some("hot") => " text-teal-600 dark:text-teal-400"
-                  | Some("warm") => " text-stone-400 dark:text-stone-400"
+                  | Some("hot") => " text-red-700 dark:text-red-400"
+                  | Some("warm") => " text-amber-400 dark:text-amber-300"
                   | _ =>
                     if isHighlighted {
                       " text-teal-600 dark:text-teal-400"
