@@ -108,6 +108,10 @@ let make = (
   ~onWordClick: (int, int) => unit,
   ~selectedWord: option<(int, int)>,
   ~baseModuleId: option<int>,
+  ~syntaxRange: string,
+  ~setSyntaxRange: (string => string) => unit,
+  ~corpusFilter: string,
+  ~setCorpusFilter: (string => string) => unit,
 ) => {
   let (searchResults, setSearchResults) = React.useState(() => None)
   let (loading, setLoading) = React.useState(() => false)
@@ -123,6 +127,22 @@ let make = (
   let (newAttrValue, setNewAttrValue) = React.useState(() => "")
   let (isAtScrollEnd, setIsAtScrollEnd) = React.useState(() => false)
   let (isScrollable, setIsScrollable) = React.useState(() => false)
+  
+  // Search settings
+  let (showSettingsDialog, setShowSettingsDialog) = React.useState(() => false)
+  let (isSettingsClosing, setIsSettingsClosing) = React.useState(() => false)
+  let (expandedSetting, setExpandedSetting) = React.useState(() => None)
+  let (infoDialog, setInfoDialog) = React.useState(() => None)
+
+  let closeSettings = () => {
+    setIsSettingsClosing(_ => true)
+    let _ = setTimeout(() => {
+      setShowSettingsDialog(_ => false)
+      setIsSettingsClosing(_ => false)
+      setExpandedSetting(_ => None)
+    }, 300)
+  }
+  
   let pageSize = 20
 
   let clearEditingState = () => {
@@ -278,7 +298,7 @@ let make = (
   }, (searchTerms, selectedModuleIds))
 
   // Fetch search results when searchTerms, selectedModuleIds, or availableModules change
-  React.useEffect5(() => {
+  React.useEffect7(() => {
     if searchTerms->Array.length > 0 && selectedModuleIds->Array.length > 0 && availableModules->Array.length > 0 {
       setLoading(_ => true)
       setError(_ => None)
@@ -300,11 +320,20 @@ let make = (
             ->Option.map((m: ParabibleApi.moduleInfo) => m.abbreviation)
           })
           ->Array.join(",")
+        
+        let reference = switch corpusFilter {
+        | "ot" => Some("Gen-Mal")
+        | "nt" => Some("Mat-Rev")
+        | _ => None
+        }
+
         let result = await ParabibleApi.fetchTermSearch(
           searchTerms,
           modulesStr,
           ~pageSize,
           ~pageNumber=currentPage,
+          ~treeNodeType=syntaxRange,
+          ~reference=?reference,
         )
         switch result {
         | Ok(data) => {
@@ -325,7 +354,79 @@ let make = (
       setResultCount(_ => 0)
     }
     None
-  }, (searchTerms, selectedModuleIds, currentPage, availableModules, baseModuleId))
+  }, (searchTerms, selectedModuleIds, currentPage, availableModules, baseModuleId, syntaxRange, corpusFilter))
+
+  let renderSettingItem = (id, label, currentValue, options, onSelect) => {
+    let isExpanded = expandedSetting == Some(id)
+    let currentValueLabel = options->Array.find(((v, _)) => v == currentValue)->Option.map(((_, l)) => l)->Option.getOr(currentValue)
+    
+    <div className="border-b border-stone-200 dark:border-stone-800 last:border-0">
+      <button 
+        className="w-full flex items-center justify-between p-4 text-left"
+        onClick={_ => setExpandedSetting(prev => prev == Some(id) ? None : Some(id))}
+      >
+        <div>
+          <div className="flex items-center gap-2">
+            <span className="font-semibold text-stone-900 dark:text-stone-100">{React.string(label)}</span>
+            <div 
+              className="text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 p-1 -m-1"
+              onClick={e => {
+                ReactEvent.Mouse.stopPropagation(e)
+                setInfoDialog(_ => Some(id))
+              }}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+          </div>
+          <div className="text-sm text-stone-500 dark:text-stone-400 mt-0.5">
+            {React.string(currentValueLabel)}
+          </div>
+        </div>
+        <svg 
+          className={"w-5 h-5 text-stone-400 transition-transform " ++ (isExpanded ? "rotate-180" : "")} 
+          fill="none" stroke="currentColor" viewBox="0 0 24 24"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+      
+      <div className={"overflow-hidden transition-all " ++ (isExpanded ? "max-h-96" : "max-h-0")}>
+        <div className="p-4 pt-0 space-y-1 max-h-60">
+          {options->Array.map(((val, txt)) => 
+            <button
+              key={val}
+              className={"w-full flex items-center justify-between px-3 py-3 rounded-lg text-sm font-medium transition-colors " ++ (
+                val == currentValue ? "bg-teal-50 dark:bg-teal-900/20 text-teal-700 dark:text-teal-300" : "text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800"
+              )}
+              onClick={_ => {
+                onSelect(val)
+              }}
+              disabled={val == "current"}
+            >
+              <span className={val == "current" ? "opacity-50" : ""}>{React.string(txt)}</span>
+              {if val == currentValue {
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                </svg>
+              } else {
+                React.null
+              }}
+            </button>
+          )->React.array}
+        </div>
+      </div>
+    </div>
+  }
+
+  let getInfoContent = (id) => {
+    switch id {
+    | "syntax" => "Determines the scope in which search terms must be found. 'Parallel' allows terms to be found across different Bible versions within the same verse. Other options (Verse, Sentence, etc.) require all terms to be found within that specific unit in a single version."
+    | "corpus" => "Filters the search results to a specific collection of books, such as the Old Testament or New Testament."
+    | _ => ""
+    }
+  }
 
   let scrollContainerRef = React.useRef(Nullable.null)
 
@@ -361,7 +462,23 @@ let make = (
 
   <div className="flex flex-col h-full">
     <div className="p-4 border-b border-gray-200 dark:border-stone-800">
-      <h1 className="text-2xl font-bold mb-2"> {React.string("Search Results")} </h1>
+      <div className="flex items-center justify-between mb-2">
+        <h1 className="text-2xl font-bold"> {React.string("Search Results")} </h1>
+        <button
+          className="p-2 rounded-full hover:bg-stone-100 dark:hover:bg-stone-800 text-stone-500 dark:text-stone-400 transition-colors"
+          onClick={_ => setShowSettingsDialog(_ => true)}
+          ariaLabel="Search settings"
+        >
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="2"
+              d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"
+            />
+          </svg>
+        </button>
+      </div>
       {searchTerms->Array.length > 0
         ? <div className="space-y-4">
             <div className="text-sm text-gray-600 dark:text-gray-400">
@@ -946,6 +1063,109 @@ let make = (
         }}
       </React.Fragment>
     | _ => React.null
+    }}
+
+    {if showSettingsDialog {
+      let animationClass = isSettingsClosing ? "animate-slide-down" : "animate-slide-up"
+      let backdropClass = isSettingsClosing ? "animate-fade-out" : "animate-fade-in"
+      
+      <React.Fragment>
+        <div className="fixed inset-0 z-50 flex items-end">
+          <div
+            className={"absolute inset-0 bg-black/40 " ++ backdropClass}
+            onClick={_ => closeSettings()}
+          />
+          <div className={"relative w-full bg-white dark:bg-stone-900 shadow-2xl max-h-[85vh] flex flex-col overflow-hidden " ++ animationClass}>
+            <div className="flex items-center justify-between p-5 border-b border-stone-200 dark:border-stone-800">
+              <h3 className="text-lg font-semibold text-stone-900 dark:text-stone-100">
+                {React.string("Search Settings")}
+              </h3>
+              <button
+                className="w-8 h-8 rounded-full bg-stone-100 dark:bg-stone-800 text-stone-500 dark:text-stone-300 flex items-center justify-center"
+                onClick={_ => closeSettings()}
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+            </div>
+
+            <div className="pb-8 overflow-y-auto">
+              {renderSettingItem(
+                "syntax",
+                "Syntax Range",
+                syntaxRange,
+                [
+                  ("parallel", "Parallel"),
+                  ("verse", "Verse"),
+                  ("sentence", "Sentence"),
+                  ("clause", "Clause"),
+                  ("phrase", "Phrase"),
+                ],
+                val => setSyntaxRange(_ => val)
+              )}
+              
+              {renderSettingItem(
+                "corpus",
+                "Corpus Filter",
+                corpusFilter,
+                [
+                  ("none", "No Filter"),
+                  ("ot", "Old Testament"),
+                  ("nt", "New Testament"),
+                  ("current", "Current Book"),
+                ],
+                val => setCorpusFilter(_ => val)
+              )}
+            </div>
+          </div>
+        </div>
+        
+        {switch infoDialog {
+        | Some(id) =>
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+            <div
+              className="absolute inset-0 bg-black/60 animate-fade-in"
+              onClick={_ => setInfoDialog(_ => None)}
+            />
+            <div className="relative bg-white dark:bg-stone-900 p-6 shadow-2xl max-w-sm w-full rounded-lg animate-scale-in">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-stone-900 dark:text-stone-100">
+                  {React.string(switch id {
+                  | "syntax" => "Syntax Range"
+                  | "corpus" => "Corpus Filter"
+                  | _ => ""
+                  })}
+                </h3>
+                <button
+                  className="w-8 h-8 rounded-full bg-stone-100 dark:bg-stone-800 text-stone-500 dark:text-stone-300 flex items-center justify-center"
+                  onClick={_ => setInfoDialog(_ => None)}
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </button>
+              </div>
+              <p className="text-stone-600 dark:text-stone-300 leading-relaxed">
+                {React.string(getInfoContent(id))}
+              </p>
+            </div>
+          </div>
+        | None => React.null
+        }}
+      </React.Fragment>
+    } else {
+      React.null
     }}
   </div>
 }

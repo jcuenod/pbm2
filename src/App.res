@@ -37,6 +37,10 @@ let make = () => {
   // Base module state
   let (baseModuleId, setBaseModuleId) = React.useState(() => initialState.baseModuleId)
 
+  // Search settings state
+  let (syntaxRange, setSyntaxRange) = React.useState(() => initialState.syntaxRange)
+  let (corpusFilter, setCorpusFilter) = React.useState(() => initialState.corpusFilter)
+
   // Load modules on mount
   React.useEffect0(() => {
     let fetchData = async () => {
@@ -92,6 +96,17 @@ let make = () => {
     StateService.saveDarkMode(darkMode)
     None
   }, [darkMode])
+
+  // Save search settings
+  React.useEffect1(() => {
+    StateService.saveSyntaxRange(syntaxRange)
+    None
+  }, [syntaxRange])
+
+  React.useEffect1(() => {
+    StateService.saveCorpusFilter(corpusFilter)
+    None
+  }, [corpusFilter])
 
   // Ensure base module is valid
   React.useEffect2(() => {
@@ -203,6 +218,10 @@ let make = () => {
         onWordClick={handleWordClick}
         selectedWord
         baseModuleId
+        syntaxRange
+        setSyntaxRange
+        corpusFilter
+        setCorpusFilter
       />
     | 3 =>
       <Settings

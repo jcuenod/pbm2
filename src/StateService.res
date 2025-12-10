@@ -24,6 +24,8 @@ type appState = {
   darkMode: bool,
   selectedModuleIds: array<int>,
   baseModuleId: option<int>,
+  syntaxRange: string,
+  corpusFilter: string,
 }
 
 // Keys for localStorage
@@ -33,6 +35,8 @@ let keySearchTerms = "searchTerms"
 let keyDarkMode = "darkMode"
 let keySelectedModules = "selectedModules"
 let keyBaseModuleId = "baseModuleId"
+let keySyntaxRange = "syntaxRange"
+let keyCorpusFilter = "corpusFilter"
 
 // Parse JSON helpers
 let parseReadingPosition = (jsonStr: string): option<readingPosition> => {
@@ -173,6 +177,18 @@ let loadBaseModuleId = (): option<int> => {
   ->Option.flatMap(str => Int.fromString(str))
 }
 
+let loadSyntaxRange = (): string => {
+  getLocalStorage(keySyntaxRange)
+  ->Nullable.toOption
+  ->Option.getOr("parallel")
+}
+
+let loadCorpusFilter = (): string => {
+  getLocalStorage(keyCorpusFilter)
+  ->Nullable.toOption
+  ->Option.getOr("none")
+}
+
 // Save state to localStorage
 let saveReadingPosition = (position: readingPosition): unit => {
   let json = JSON.stringifyAny({
@@ -232,6 +248,14 @@ let saveBaseModuleId = (id: option<int>): unit => {
   }
 }
 
+let saveSyntaxRange = (range: string): unit => {
+  setLocalStorage(keySyntaxRange, range)
+}
+
+let saveCorpusFilter = (filter: string): unit => {
+  setLocalStorage(keyCorpusFilter, filter)
+}
+
 // Load entire app state
 let loadAppState = (): appState => {
   {
@@ -241,5 +265,7 @@ let loadAppState = (): appState => {
     darkMode: loadDarkMode(),
     selectedModuleIds: loadSelectedModuleIds(),
     baseModuleId: loadBaseModuleId(),
+    syntaxRange: loadSyntaxRange(),
+    corpusFilter: loadCorpusFilter(),
   }
 }
