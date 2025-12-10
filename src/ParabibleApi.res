@@ -5,6 +5,7 @@ type word = {
   leader?: string,
   text: string,
   trailer?: string,
+  temp?: string,
 }
 
 type matchingText = {
@@ -185,7 +186,9 @@ let fetchText = async (modules: string, reference: string): result<textEndpointR
                                     wo->Dict.get("leader")->Option.flatMap(JSON.Decode.string)
                                   let trailer =
                                     wo->Dict.get("trailer")->Option.flatMap(JSON.Decode.string)
-                                  Some({wid, text, ?leader, ?trailer})
+                                  let temp =
+                                    wo->Dict.get("temp")->Option.flatMap(JSON.Decode.string)
+                                  Some({wid, text, ?leader, ?trailer, ?temp})
                                 }
                               | None => None
                               }
@@ -374,7 +377,9 @@ let fetchTermSearch = async (
                                           wo
                                           ->Dict.get("trailer")
                                           ->Option.flatMap(JSON.Decode.string)
-                                        Some({wid, text, ?leader, ?trailer})
+                                        let temp =
+                                          wo->Dict.get("temp")->Option.flatMap(JSON.Decode.string)
+                                        Some({wid, text, ?leader, ?trailer, ?temp})
                                       }
                                     | None => None
                                     }

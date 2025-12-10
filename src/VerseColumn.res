@@ -81,10 +81,17 @@ let make = (
                   highlightWordsArr->Array.some(((wid, mid)) => wid == word.wid && mid == moduleId)
                 let highlightClass = if isSelected {
                   " text-blue-600 dark:text-blue-400"
-                } else if isHighlighted {
-                  " font-semibold text-blue-600 dark:text-blue-400"
                 } else {
-                  ""
+                  switch word.temp {
+                  | Some("hot") => " text-teal-600 dark:text-teal-400"
+                  | Some("warm") => " text-stone-400 dark:text-stone-400"
+                  | _ =>
+                    if isHighlighted {
+                      " text-teal-600 dark:text-teal-400"
+                    } else {
+                      ""
+                    }
+                  }
                 }
                 <React.Fragment key={word.wid->Int.toString}>
                   {switch word.leader {
