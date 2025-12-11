@@ -46,10 +46,10 @@ let make = (
   | None => ""
   }
 
-  let verseNumClass = "font-sans text-xs rounded-full px-1.5 py-0.5 text-xs font-bold mb-1 inline-block align-middle me-1 " ++ if isChapterDiff {
-    "text-orange-500 dark:text-orange-400 border-2 border-orange-500 dark:border-orange-400"
+  let verseNumClass = "font-sans text-xs relative -top-1.5 py-0.5 font-bold inline-block align-middle me-1 " ++ if isChapterDiff {
+    "rounded-full px-1 text-orange-500 dark:text-orange-400 border-2 border-orange-500 dark:border-orange-400"
   } else if isVerseDiff {
-    "text-white bg-orange-500 dark:bg-orange-600"
+    "rounded-full px-1.5 text-white bg-orange-500 dark:bg-orange-600"
   } else {
     "text-orange-500 dark:text-orange-400"
   }
