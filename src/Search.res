@@ -1,8 +1,3 @@
-type bookDetail = {
-  name: string,
-  abbreviation: string,
-}
-
 type featureDef = {
   key: string,
   value: string,
@@ -23,39 +18,14 @@ type featuresData = {
 @module("./assets/features.json")
 external featuresData: featuresData = "default"
 
-@module("./assets/bookDetails.json")
-external rawBookDetails: array<JSON.t> = "default"
-
-let bookDetails: array<option<bookDetail>> = rawBookDetails->Array.map(entry =>
-  switch JSON.Decode.object(entry) {
-  | Some(obj) =>
-    obj
-    ->Dict.get("name")
-    ->Option.flatMap(JSON.Decode.string)
-    ->Option.map(name => {
-      let abbreviation =
-        obj->Dict.get("abbreviation")->Option.flatMap(JSON.Decode.string)->Option.getOr(name)
-      {name, abbreviation}
-    })
-  | None => None
-  }
-)
-
-let getBookDetailByIndex = (bookIndex: int): option<bookDetail> =>
-  if bookIndex <= 0 {
-    None
-  } else {
-    bookDetails->Array.get(bookIndex - 1)->Option.flatMap(x => x)
-  }
-
 let formatReference = (match: option<ParabibleApi.matchingText>): option<string> =>
   switch match {
   | Some(m) =>
     let bookIndex = m.rid / 1_000_000
     let chapterNum = (m.rid / 1000)->mod(1000)
     let verseNum = m.rid->mod(1000)
-    let bookName = switch getBookDetailByIndex(bookIndex) {
-    | Some(detail) => detail.name
+    let bookName = switch BibleData.getBookByIndex(bookIndex) {
+    | Some(book) => book.name
     | None => "Unknown book"
     }
     let chapterVerse = if verseNum > 0 {
