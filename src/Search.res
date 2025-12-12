@@ -99,6 +99,10 @@ let make = (
   let (isAtScrollEnd, setIsAtScrollEnd) = React.useState(() => false)
   let (isScrollable, setIsScrollable) = React.useState(() => false)
   
+  let (collapsed, setCollapsed) = React.useState(() => false)
+  let lastY = React.useRef(0)
+  let accumulatedDy = React.useRef(0)
+
   // Search settings
   let (showSettingsDialog, setShowSettingsDialog) = React.useState(() => false)
   let (isSettingsClosing, setIsSettingsClosing) = React.useState(() => false)
@@ -430,6 +434,27 @@ let make = (
     }
   }
 
+  let handleScroll = e => {
+    let target = e->JsxEvent.UI.target
+    let scrollTop = target["scrollTop"]
+    let dy = scrollTop - lastY.current
+    lastY.current = scrollTop
+
+    if (dy > 0 && accumulatedDy.current < 0) || (dy < 0 && accumulatedDy.current > 0) {
+      accumulatedDy.current = dy
+    } else {
+      accumulatedDy.current = accumulatedDy.current + dy
+    }
+
+    if accumulatedDy.current > 50 {
+      setCollapsed(_ => true)
+      accumulatedDy.current = 0
+    } else if accumulatedDy.current < -50 {
+      setCollapsed(_ => false)
+      accumulatedDy.current = 0
+    }
+  }
+
   React.useEffect1(() => {
     checkScrollEnd()
     None
@@ -456,102 +481,110 @@ let make = (
       </div>
       {searchTerms->Array.length > 0
         ? <div className="space-y-4">
-            <div className="text-sm text-gray-600 dark:text-gray-400">
-              <span className="mr-2"> {React.string(`${resultCount->Int.toString} results`)} </span>
-              {React.string("·")}
-              <span className="ml-2">
-                {React.string(`${searchTerms->Array.length->Int.toString} search terms`)}
-              </span>
-            </div>
-            <div className="relative -mx-4">
-              <div
-                ref={ReactDOM.Ref.domRef(scrollContainerRef)}
-                className="flex overflow-x-auto gap-2 pb-2 px-4 scrollbar-hide"
-                onScroll={_ => checkScrollEnd()}
-              >
-                {searchTerms
-                ->Array.mapWithIndex((term, idx) => {
-                  let primaryAttr = term.attributes->Array.get(0)
-                  let summary = switch primaryAttr {
-                  | Some((key, value)) => `${String.replaceAll(key, "_", " ")}: ${value}`
-                  | None => "No attributes"
-                  }
-                  let extraCount = term.attributes->Array.length - 1
-                  let summaryText = if extraCount > 0 {
-                    summary ++ " (+" ++ extraCount->Int.toString ++ ")"
-                  } else {
-                    summary
-                  }
+            <div
+              className={"transition-all duration-300 overflow-hidden space-y-4 " ++ (
+                collapsed ? "max-h-0 opacity-0 -mb-4" : "max-h-40 opacity-100"
+              )}
+            >
+              <div className="text-sm text-gray-600 dark:text-gray-400">
+                <span className="mr-2">
+                  {React.string(`${resultCount->Int.toString} results`)}
+                </span>
+                {React.string("·")}
+                <span className="ml-2">
+                  {React.string(`${searchTerms->Array.length->Int.toString} search terms`)}
+                </span>
+              </div>
+              <div className="relative -mx-4">
+                <div
+                  ref={ReactDOM.Ref.domRef(scrollContainerRef)}
+                  className="flex overflow-x-auto gap-2 pb-2 px-4 scrollbar-hide"
+                  onScroll={_ => checkScrollEnd()}
+                >
+                  {searchTerms
+                  ->Array.mapWithIndex((term, idx) => {
+                    let primaryAttr = term.attributes->Array.get(0)
+                    let summary = switch primaryAttr {
+                    | Some((key, value)) => `${String.replaceAll(key, "_", " ")}: ${value}`
+                    | None => "No attributes"
+                    }
+                    let extraCount = term.attributes->Array.length - 1
+                    let summaryText = if extraCount > 0 {
+                      summary ++ " (+" ++ extraCount->Int.toString ++ ")"
+                    } else {
+                      summary
+                    }
 
-                  <div
-                    key={idx->Int.toString}
-                    className="shrink-0 group flex items-center bg-stone-100 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 overflow-hidden transition-all active:scale-95"
-                  >
-                    <button
-                      className="px-3 py-2 text-sm font-medium text-stone-900 dark:text-stone-100 hover:bg-stone-200 dark:hover:bg-stone-700 flex items-center gap-2"
-                      onClick={_ => startEditingTerm(idx)}
+                    <div
+                      key={idx->Int.toString}
+                      className="shrink-0 group flex items-center bg-stone-100 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 overflow-hidden transition-all active:scale-95"
                     >
-                      {if term.inverted {
-                        <span
-                          className="text-xs font-bold text-rose-600 bg-rose-100 dark:bg-rose-900/30 px-1.5 py-0.5"
-                        >
-                          {React.string("NOT")}
-                        </span>
-                      } else {
-                        React.null
-                      }}
-                      <span> {React.string(summaryText)} </span>
-                    </button>
-                    <div className="w-px h-4 bg-stone-300 dark:bg-stone-600" />
-                    <button
-                      className="px-2 py-2 hover:bg-rose-100 dark:hover:bg-rose-900/30 text-stone-400 hover:text-rose-600 transition-colors"
-                      onClick={_ => deleteTerm(idx)}
-                      ariaLabel="Remove term"
-                    >
-                      <svg
-                        className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                      <button
+                        className="px-3 py-2 text-sm font-medium text-stone-900 dark:text-stone-100 hover:bg-stone-200 dark:hover:bg-stone-700 flex items-center gap-2"
+                        onClick={_ => startEditingTerm(idx)}
                       >
+                        {if term.inverted {
+                          <span
+                            className="text-xs font-bold text-rose-600 bg-rose-100 dark:bg-rose-900/30 px-1.5 py-0.5"
+                          >
+                            {React.string("NOT")}
+                          </span>
+                        } else {
+                          React.null
+                        }}
+                        <span> {React.string(summaryText)} </span>
+                      </button>
+                      <div className="w-px h-4 bg-stone-300 dark:bg-stone-600" />
+                      <button
+                        className="px-2 py-2 hover:bg-rose-100 dark:hover:bg-rose-900/30 text-stone-400 hover:text-rose-600 transition-colors"
+                        onClick={_ => deleteTerm(idx)}
+                        ariaLabel="Remove term"
+                      >
+                        <svg
+                          className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth="2"
+                            d="M6 18L18 6M6 6l12 12"
+                          />
+                        </svg>
+                      </button>
+                    </div>
+                  })
+                  ->React.array}
+                  <div className="w-12 shrink-0" />
+                </div>
+                {if isScrollable {
+                  <div className="absolute right-0 -top-1 bottom-1 flex">
+                    <div
+                      className="w-5 h-full bg-gradient-to-l from-white dark:from-black to-transparent pointer-events-none"
+                    >
+                    </div>
+                    <button
+                      className={"w-10 h-full flex items-center justify-center bg-white dark:bg-black transition-colors " ++ (
+                        isAtScrollEnd
+                          ? "text-stone-300 dark:text-stone-700 cursor-default"
+                          : "text-teal-600 hover:text-teal-800 dark:hover:text-teal-200"
+                      )}
+                      onClick={_ =>
+                        if !isAtScrollEnd {
+                          scrollToEnd()
+                        }}
+                      disabled={isAtScrollEnd}
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth="2"
-                          d="M6 18L18 6M6 6l12 12"
+                          strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"
                         />
                       </svg>
                     </button>
                   </div>
-                })
-                ->React.array}
-                <div className="w-12 shrink-0" />
+                } else {
+                  React.null
+                }}
               </div>
-              {if isScrollable {
-                <div className="absolute right-0 -top-1 bottom-1 flex">
-                  <div
-                    className="w-5 h-full bg-gradient-to-l from-white dark:from-black to-transparent pointer-events-none"
-                  >
-                  </div>
-                  <button
-                    className={"w-10 h-full flex items-center justify-center bg-white dark:bg-black transition-colors " ++ (
-                      isAtScrollEnd
-                        ? "text-stone-300 dark:text-stone-700 cursor-default"
-                        : "text-teal-600 hover:text-teal-800 dark:hover:text-teal-200"
-                    )}
-                    onClick={_ =>
-                      if !isAtScrollEnd {
-                        scrollToEnd()
-                      }}
-                    disabled={isAtScrollEnd}
-                  >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path
-                        strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"
-                      />
-                    </svg>
-                  </button>
-                </div>
-              } else {
-                React.null
-              }}
             </div>
             {totalPages > 0
               ? <div className="space-y-2">
@@ -562,7 +595,7 @@ let make = (
         : React.null}
     </div>
 
-    <div className="flex-1 overflow-auto p-4">
+    <div className="flex-1 overflow-auto p-4" onScroll={handleScroll}>
       {switch (loading, error, searchResults) {
       | (true, _, _) => <div className="text-center py-8"> {React.string("Loading...")} </div>
       | (_, Some(err), _) =>
