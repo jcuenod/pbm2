@@ -257,10 +257,11 @@ let make = (~isOpen, ~onClose, ~currentBook, ~currentChapter, ~onSelect) => {
                   }
                 >
                   {// Create array of chapters, prepending 0 (Prologue) if book has one
-                  let chapters = switch book.hasPrologue {
-                  | Some(true) => Array.concat([0], Array.fromInitializer(~length=book.chapters, i => i + 1))
-                  | _ => Array.fromInitializer(~length=book.chapters, i => i + 1)
-                  }
+                  let hasPrologue = book.hasPrologue == Some(true)
+                  let chapters = Array.fromInitializer(
+                    ~length=book.chapters + (hasPrologue ? 1 : 0),
+                    i => hasPrologue ? i : i + 1
+                  )
                   chapters
                   ->Array.map(
                     chapter => {
