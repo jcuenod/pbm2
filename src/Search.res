@@ -123,6 +123,7 @@ let make = (
   let (editingDraft, setEditingDraft) = React.useState(() => None)
   let (isClosing, setIsClosing) = React.useState(() => false)
   let (showAddAttrDialog, setShowAddAttrDialog) = React.useState(() => false)
+  let (showDeleteConfirmDialog, setShowDeleteConfirmDialog) = React.useState(() => false)
   let (newAttrKey, setNewAttrKey) = React.useState(() => "")
   let (newAttrValue, setNewAttrValue) = React.useState(() => "")
   let (isAtScrollEnd, setIsAtScrollEnd) = React.useState(() => false)
@@ -242,8 +243,12 @@ let make = (
   let saveDraft = () => {
     switch (editingTermIndex, editingDraft) {
     | (Some(idx), Some(term)) => {
-        onUpdateSearchTerm(idx, term)
-        clearEditingState()
+        if term.attributes->Array.length == 0 {
+          setShowDeleteConfirmDialog(_ => true)
+        } else {
+          onUpdateSearchTerm(idx, term)
+          clearEditingState()
+        }
       }
     | _ => ()
     }
@@ -766,7 +771,7 @@ let make = (
             onClick={_ => clearEditingState()}
           />
           <div
-            className={"relative w-full bg-white dark:bg-stone-900 p-5 shadow-2xl max-h-[85vh] overflow-hidden " ++
+            className={"relative w-full flex flex-col bg-white dark:bg-stone-900 p-5 shadow-2xl max-h-[85vh] overflow-hidden " ++
             animationClass}
           >
             <div className="flex items-center justify-between gap-3">
@@ -808,7 +813,7 @@ let make = (
               )}
             </button>
 
-            <div className="mt-4 space-y-3 max-h-[45vh] overflow-auto">
+            <div className="flex-0 mt-4 space-y-3 max-h-[45vh] overflow-auto">
               {switch draft.attributes->Array.length {
               | 0 =>
                 <div className="text-sm text-stone-600 dark:text-stone-300">
@@ -1061,6 +1066,45 @@ let make = (
         } else {
           React.null
         }}
+          {if showDeleteConfirmDialog {
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+              <div
+                className="absolute inset-0 bg-black/60"
+                onClick={_ => setShowDeleteConfirmDialog(_ => false)}
+              />
+              <div className="relative bg-white dark:bg-stone-900 p-6 shadow-2xl max-w-md w-full rounded-lg">
+                <div className="mb-4">
+                  <h3 className="text-lg font-semibold text-stone-900 dark:text-stone-100">
+                    {React.string("Delete term?")}
+                  </h3>
+                  <p className="text-sm text-stone-600 dark:text-stone-300 mt-2">
+                    {React.string("This term has no attributes — saving will remove it. Cancel will exit without saving. Do you want to delete the term?")}
+                  </p>
+                </div>
+                <div className="flex gap-3">
+                  <button
+                    className="flex-1 h-10 border border-stone-300 dark:border-stone-700 text-stone-700 dark:text-stone-200 font-semibold text-sm"
+                    onClick={_ => {
+                      setShowDeleteConfirmDialog(_ => false)
+                    }}
+                  >
+                    {React.string("Cancel")}
+                  </button>
+                  <button
+                    className="flex-1 h-10 font-semibold text-sm text-white bg-rose-600 hover:bg-rose-700"
+                    onClick={_ => {
+                      setShowDeleteConfirmDialog(_ => false)
+                      deleteTerm(idx)
+                    }}
+                  >
+                    {React.string("Delete term")}
+                  </button>
+                </div>
+              </div>
+            </div>
+          } else {
+            React.null
+          }}
       </React.Fragment>
     | _ => React.null
     }}
