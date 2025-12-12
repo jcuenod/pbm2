@@ -94,6 +94,36 @@ html, body {
   animation: fade-out 0.3s ease-in forwards;
 }
 
+@keyframes dialog-enter {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes dialog-exit {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(20px) scale(0.95);
+  }
+}
+
+.animate-dialog-enter {
+  animation: dialog-enter 120ms ease-out forwards;
+}
+
+.animate-dialog-exit {
+  animation: dialog-exit 120ms ease-in forwards;
+}
+
 
 /* dictionary */
 orth, foreign {
