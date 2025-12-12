@@ -256,7 +256,13 @@ let make = (~isOpen, ~onClose, ~currentBook, ~currentChapter, ~onSelect) => {
                     gridTemplateColumns: "repeat(auto-fit, minmax(3rem, 1fr))",
                   }
                 >
-                  {Array.fromInitializer(~length=book.chapters, i => i + 1)
+                  {// Create array of chapters, prepending 0 (Prologue) if book has one
+                  let hasPrologue = book.hasPrologue == Some(true)
+                  let chapters = Array.fromInitializer(
+                    ~length=book.chapters + (hasPrologue ? 1 : 0),
+                    i => hasPrologue ? i : i + 1
+                  )
+                  chapters
                   ->Array.map(
                     chapter => {
                       let isSelected = currentBook == book.id && currentChapter == chapter
@@ -272,7 +278,7 @@ let make = (~isOpen, ~onClose, ~currentBook, ~currentChapter, ~onSelect) => {
                             : "bg-white dark:bg-stone-700 text-stone-700 dark:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-600"
                         ) ++ " h-12 text-sm font-medium transition-all duration-200 flex items-center justify-center active:scale-95"}
                       >
-                        {React.string(chapter->Int.toString)}
+                        {React.string(chapter == 0 ? "Pr" : chapter->Int.toString)}
                       </button>
                     },
                   )
