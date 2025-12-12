@@ -1,6 +1,3 @@
-@module("./jsHelpers.js")
-external getScrollTop: JsxEvent.UI.t => int = "getScrollTop"
-
 type chapterData = {
   chapter: int,
   data: ParabibleApi.textEndpointResult,
@@ -24,7 +21,6 @@ let make = (
   ~onPositionChange: (string, int, int) => unit,
   ~baseModuleId: option<int>,
 ) => {
-  let (collapsed, setCollapsed) = React.useState(() => false)
   let (showSelector, setShowSelector) = React.useState(() => false)
   let (currentBook, setCurrentBook) = React.useState(() => 
     initialPosition->Option.map(p => p.book)->Option.getOr("Matt")
@@ -47,14 +43,13 @@ let make = (
   let (visibleVerse, setVisibleVerse) = React.useState(() => 
     initialPosition->Option.map(p => p.verse)->Option.getOr(1)
   )
-  let lastY = React.useRef(0)
-  let accumulatedDy = React.useRef(0) // Track accumulated scroll for smoother header behavior
   let scrollContainerRef = React.useRef(Nullable.null)
   let scrollAdjustmentRef = React.useRef((None: option<scrollMetrics>))
   let isInitialLoadRef = React.useRef(false)
   let (scrollToChapterAfterLoad, setScrollToChapterAfterLoad) = React.useState(() => None)
 
   let isProgrammaticScrollRef = React.useRef(false)
+  let (collapsed, setCollapsed, handleCollapseScroll) = Hooks.useCollapsibleHeader(~disabled=isProgrammaticScrollRef)
   let shouldRestorePositionRef = React.useRef(true)
   let hasPerformedInitialScrollRef = React.useRef(false)
 
@@ -70,7 +65,6 @@ let make = (
         let chapterElement = element["querySelector"](`#chapter-${chapterNum->Int.toString}`)
         if chapterElement !== Nullable.null->Obj.magic {
           isProgrammaticScrollRef.current = true
-          accumulatedDy.current = 0
           let _ = chapterElement["scrollIntoView"]({"behavior": "smooth"})
           // Reset after a delay to allow smooth scroll to complete
           let _ = setTimeout(() => {isProgrammaticScrollRef.current = false}, 1000)
@@ -141,7 +135,6 @@ let make = (
         
         if verseElement !== Nullable.null->Obj.magic {
            isProgrammaticScrollRef.current = true
-           accumulatedDy.current = 0
            let _ = verseElement["scrollIntoView"]({
              "behavior": "instant",
              "block": "start",
@@ -154,7 +147,6 @@ let make = (
            let chapterElement = element["querySelector"](`#${chapterId}`)
            if chapterElement !== Nullable.null->Obj.magic {
              isProgrammaticScrollRef.current = true
-             accumulatedDy.current = 0
              let _ = chapterElement["scrollIntoView"]({
                "behavior": "instant",
                "block": "start",
@@ -240,28 +232,7 @@ let make = (
   }
 
   let onScroll = e => {
-    let st = getScrollTop(e)
-    let dy = st - lastY.current
-    lastY.current = st
-
-    if !isProgrammaticScrollRef.current {
-      // Accumulate scroll distance for smoother header behavior
-      // Reset accumulator when direction changes
-      if (dy > 0 && accumulatedDy.current < 0) || (dy < 0 && accumulatedDy.current > 0) {
-        accumulatedDy.current = dy
-      } else {
-        accumulatedDy.current = accumulatedDy.current + dy
-      }
-
-      // Use larger threshold (50px) for more stable header behavior
-      if accumulatedDy.current > 50 {
-        setCollapsed(_ => true)
-        accumulatedDy.current = 0
-      } else if accumulatedDy.current < -50 {
-        setCollapsed(_ => false)
-        accumulatedDy.current = 0
-      }
-    }
+    handleCollapseScroll(e)
 
     let target = e->JsxEvent.UI.target
     let container = target->Obj.magic

@@ -99,9 +99,7 @@ let make = (
   let (isAtScrollEnd, setIsAtScrollEnd) = React.useState(() => false)
   let (isScrollable, setIsScrollable) = React.useState(() => false)
   
-  let (collapsed, setCollapsed) = React.useState(() => false)
-  let lastY = React.useRef(0)
-  let accumulatedDy = React.useRef(0)
+  let (collapsed, _, handleScroll) = Hooks.useCollapsibleHeader()
 
   // Search settings
   let (showSettingsDialog, setShowSettingsDialog) = React.useState(() => false)
@@ -431,27 +429,6 @@ let make = (
       let scrollWidth = el["scrollWidth"]
       el["scrollTo"]({"left": scrollWidth, "behavior": "smooth"})
     | None => ()
-    }
-  }
-
-  let handleScroll = e => {
-    let target = e->JsxEvent.UI.target
-    let scrollTop = target["scrollTop"]
-    let dy = scrollTop - lastY.current
-    lastY.current = scrollTop
-
-    if (dy > 0 && accumulatedDy.current < 0) || (dy < 0 && accumulatedDy.current > 0) {
-      accumulatedDy.current = dy
-    } else {
-      accumulatedDy.current = accumulatedDy.current + dy
-    }
-
-    if accumulatedDy.current > 50 {
-      setCollapsed(_ => true)
-      accumulatedDy.current = 0
-    } else if accumulatedDy.current < -50 {
-      setCollapsed(_ => false)
-      accumulatedDy.current = 0
     }
   }
 
