@@ -492,7 +492,7 @@ let make = (
         ? <div className="space-y-4">
             <div
               className={"transition-all duration-300 overflow-hidden space-y-4 " ++ (
-                collapsed ? "max-h-0 opacity-0 -mb-4" : "max-h-40 opacity-100"
+                collapsed ? "max-h-0 opacity-0 mb-0" : "max-h-40 opacity-100"
               )}
             >
               <div className="text-sm text-gray-600 dark:text-gray-400">
