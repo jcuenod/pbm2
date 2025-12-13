@@ -194,7 +194,7 @@ let make = (~isOpen, ~onClose, ~currentBook, ~currentChapter, ~onSelect) => {
               : "mb-3"}
           >
             // Book buttons row
-            <div className="grid grid-cols-4 gap-2 items-start">
+            <div className="grid grid-cols-4 gap-2 items-stretch"> // 1. items-stretch to align heights
               {row
               ->Array.map(book => {
                 let underlineColor = switch book.category {
@@ -208,35 +208,54 @@ let make = (~isOpen, ~onClose, ~currentBook, ~currentChapter, ~onSelect) => {
                 | Revelation => "border-rose-500"
                 | ApostolicFathers => "border-stone-400"
                 }
+
                 let isExpanded = switch expandedBookId {
                 | Some(id) => id == book.id
                 | None => false
                 }
                 let isCurrentBook = currentBook == book.id
+
                 <button
                   type_="button"
                   key={book.id}
                   onClick={e => handleClick(() => handleBookClick(book.id), e)}
                   onTouchStart={handleTouchStart}
                   onTouchEnd={e => handleTouchEnd(() => handleBookClick(book.id), e)}
-                  className={"relative bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-900 dark:text-stone-100 " ++
-                  "px-3 font-semibold text-sm transition-all duration-200 active:scale-95 " ++
-                  (isExpanded ? "pt-2 pb-6 z-10" : "py-2") ++ (
-                    isCurrentBook ? " bg-stone-200 dark:bg-stone-700" : ""
-                  )}
+                  // 2. Button is set to relative and h-full. 
+                  className={"relative h-full w-full group focus:outline-none transition-transform active:scale-95 " ++ 
+                    (isExpanded ? "z-10" : "z-0")
+                  }
                 >
-                  <div className="flex flex-col items-center">
-                    <div className={isExpanded ? "py-0.5" : "py-0.5"}>
-                      {React.string(book.sbl)}
-                    </div>
-                    <div
-                      className={"w-full border-b-2 " ++
-                      underlineColor ++ (isExpanded ? " absolute bottom-0 left-0" : "")}
+                  // 3. BACKGROUND LAYER (The "Physical" Tab)
+                  // This div handles the background color and the shape.
+                  // If expanded, it uses negative bottom (-bottom-4) to hang down WITHOUT stretching the grid row.
+                  <div 
+                    className={"absolute inset-x-0 top-0 transition-all duration-200 rounded-sm " ++ 
+                      (isCurrentBook ? " bg-stone-200 dark:bg-stone-700 " : " bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 ") ++
+                      (isExpanded ? "-bottom-4 shadow-sm" : "bottom-0")
+                    }
+                  >
+                     // The colored underline is now part of this background layer
+                     // It stays pinned to the bottom of the visual shape
+                     // Note: --spacing = 0.25rem so p-4 = 1rem
+                     <div
+                      className={"absolute border-b-2 transition-all duration-120 " ++ underlineColor ++ (isExpanded ? " left-0 right-0 bottom-0" : " left-[1rem] right-[1rem] bottom-[0.25rem]")}
                     />
                   </div>
+
+                  // 4. CONTENT LAYER
+                  // This sits on top of the background. 
+                  // flex/justify-center ensures text is centered regardless of how tall wrapping neighbors are.
+                  <div className="relative z-20 flex flex-col items-center justify-center h-full px-2 py-2">
+                    <span className="text-xs font-semibold text-stone-900 dark:text-stone-100 text-center leading-tight">
+                      {React.string(book.sbl)}
+                    </span>
+                  </div>
+                  
+                  // Indicator dot stays absolute relative to the main button container
                   {isCurrentBook
                     ? <div
-                        className="absolute top-1 right-1 w-1.5 h-1.5 bg-teal-600 rounded-full"
+                        className="absolute top-1 right-1 z-30 w-1.5 h-1.5 bg-teal-600 rounded-full"
                       />
                     : React.null}
                 </button>
@@ -251,7 +270,7 @@ let make = (~isOpen, ~onClose, ~currentBook, ~currentChapter, ~onSelect) => {
               | Some(id) if id == book.id =>
                 <div
                   key={book.id ++ "-chapters"}
-                  className="grid gap-2 px-3 py-3 border-t-0 overflow-hidden animate-slide-down bg-stone-100 dark:bg-stone-800"
+                  className="grid gap-2 px-3 py-3 mt-4 border-t-0 overflow-hidden animate-slide-down bg-stone-100 dark:bg-stone-800"
                   style={
                     gridTemplateColumns: "repeat(auto-fit, minmax(3rem, 1fr))",
                   }
