@@ -23,17 +23,21 @@ let make = () => {
 
   // Module state
   let (availableModules, setAvailableModules) = React.useState(() => [])
-  let (selectedModuleIds, setSelectedModuleIds) = React.useState(() => initialState.selectedModuleIds)
+  let (selectedModuleIds, setSelectedModuleIds) = React.useState(() =>
+    initialState.selectedModuleIds
+  )
 
   // Selected word state (wid, moduleId)
   let (selectedWord, setSelectedWord) = React.useState(() => initialState.selectedWord)
 
   // Search terms state
   let (searchTerms, setSearchTerms) = React.useState(() => initialState.searchTerms)
-  let (currentBook, setCurrentBook) = React.useState(() => switch initialState.readingPosition {
+  let (currentBook, setCurrentBook) = React.useState(() =>
+    switch initialState.readingPosition {
     | Some(pos) => pos.book->BibleData.getBookById
     | None => None
-  })
+    }
+  )
 
   // Dark mode state
   let (darkMode, setDarkMode) = React.useState(() => initialState.darkMode)
@@ -204,12 +208,12 @@ let make = () => {
 
   let pageFor = (~idx) =>
     switch idx {
-    | 0 => 
-      <Read 
-        selectedModuleIds 
-        availableModules 
-        onWordClick={handleWordClick} 
-        selectedWord 
+    | 0 =>
+      <Read
+        selectedModuleIds
+        availableModules
+        onWordClick={handleWordClick}
+        selectedWord
         initialPosition={initialState.readingPosition}
         onPositionChange={handleReadingPositionChange}
         baseModuleId
@@ -255,12 +259,12 @@ let make = () => {
         baseModuleId
         onBaseModuleChange={id => setBaseModuleId(_ => Some(id))}
       />
-    | _ => 
-      <Read 
-        selectedModuleIds 
-        availableModules 
-        onWordClick={handleWordClick} 
-        selectedWord 
+    | _ =>
+      <Read
+        selectedModuleIds
+        availableModules
+        onWordClick={handleWordClick}
+        selectedWord
         initialPosition={initialState.readingPosition}
         onPositionChange={handleReadingPositionChange}
         baseModuleId
@@ -279,15 +283,20 @@ let make = () => {
 
   let isPageVisible = (pageIdx: int) => {
     pageIdx == index ||
-      switch animatingTo {
-      | None => false
-      | Some(target) => pageIdx == target
-      } ||
-          Belt.Set.Int.has(animatingFrom, pageIdx)
+    switch animatingTo {
+    | None => false
+    | Some(target) => pageIdx == target
+    } ||
+    Belt.Set.Int.has(animatingFrom, pageIdx)
   }
 
   let renderPage = (pageIdx: int) =>
-    if isPageVisible(pageIdx) || animatingTo == Some(pageIdx) || Belt.Set.Int.has(animatingFrom, pageIdx) || index == pageIdx {
+    if (
+      isPageVisible(pageIdx) ||
+      animatingTo == Some(pageIdx) ||
+      Belt.Set.Int.has(animatingFrom, pageIdx) ||
+      index == pageIdx
+    ) {
       <div
         className={"absolute border-slate-400 border-r-1 -right-px top-0 bottom-0 w-[calc(100vw+2px)] h-full transition-all duration-300" ++ (
           isPageVisible(pageIdx) ? "" : " pointer-events-none invisible"
