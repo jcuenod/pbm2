@@ -518,7 +518,13 @@ let make = (
     <div key={chapterNum->Int.toString} id={chapterId} className="chapter-section">
       <div className="py-2 mb-4 chapter-heading">
         <div className="text-lg font-semibold text-gray-400 dark:text-gray-400 text-center">
-          {React.string(`Chapter ${chapterNum->Int.toString}`)}
+          {React.string(
+            if chapterNum == 0 {
+              "Prologue"
+            } else {
+              `Chapter ${chapterNum->Int.toString}`
+            }
+          )}
         </div>
       </div>
       {data
@@ -656,7 +662,8 @@ let make = (
       ->Array.find(b => b.id == currentBook)
       ->Option.map(b => b.name)
       ->Option.getOr("Matthew")
-    bookName ++ " " ++ visibleChapter->Int.toString
+    let chapterSuffix = if visibleChapter == 0 { "Pr." } else { visibleChapter->Int.toString }
+    bookName ++ " " ++ chapterSuffix
   }
 
   <div className="flex flex-col h-full">
