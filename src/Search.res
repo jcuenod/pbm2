@@ -274,6 +274,14 @@ let make = (
     None
   }, (searchTerms, selectedModuleIds))
 
+  let corpusFilterReference = switch corpusFilter {
+  | "ot" => Some("Gen-Mal")
+  | "nt" => Some("Mat-Rev")
+  | "bible" => Some("Gen-Rev")
+  | "current" => currentBook->Option.map(book => book.id)
+  | _ => None
+  }
+
   // Fetch search results when searchTerms, selectedModuleIds, or availableModules change
   React.useEffect7(() => {
     if (
@@ -302,21 +310,13 @@ let make = (
           })
           ->Array.join(",")
 
-        let reference = switch corpusFilter {
-        | "ot" => Some("Gen-Mal")
-        | "nt" => Some("Mat-Rev")
-        | "bible" => Some("Gen-Rev")
-        | "current" => currentBook->Option.map(book => book.id)
-        | _ => None
-        }
-
         let result = await ParabibleApi.fetchTermSearch(
           searchTerms,
           modulesStr,
           ~pageSize,
           ~pageNumber=currentPage,
           ~treeNodeType=syntaxRange,
-          ~reference?,
+          ~reference=corpusFilterReference,
         )
         switch result {
         | Ok(data) => {
@@ -353,7 +353,7 @@ let make = (
     availableModules,
     baseModuleId,
     syntaxRange,
-    corpusFilter,
+    corpusFilterReference,
   ))
 
   let renderSettingItem = (id, label, currentValue, options, onSelect) => {
@@ -1167,10 +1167,10 @@ let make = (
                   ("ot", "Old Testament"),
                   ("nt", "New Testament"),
                   ("bible", "Whole Bible"),
-                  ...(switch currentBook {
-                    | Some(book) => [("current", book.name)]
-                    | None => []
-                  }),
+                  ...switch currentBook {
+                  | Some(book) => [("current", `Current Book (${book.name})`)]
+                  | None => []
+                  },
                 ],
                 val => setCorpusFilter(_ => val),
               )}

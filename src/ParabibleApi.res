@@ -283,7 +283,7 @@ let fetchTermSearch = async (
   searchTerms: array<searchTermData>,
   modules: string,
   ~treeNodeType: string="parallel",
-  ~reference: option<string>=?,
+  ~reference: option<string>,
   ~pageSize: int=20,
   ~pageNumber: int=0,
 ): result<termSearchResult, string> => {
