@@ -177,20 +177,20 @@ let booksWithIndices: array<option<book>> = [
 
   // ApostolicFathers
   Some({id: "Barn", sbl: "Barn.", name: "Barnabas", chapters: 21, category: ApostolicFathers, hasPrologue: Some(false)}), // index 110
-  Some({id: "1Clem", sbl: "1 Clem.", name: "1 Clement", chapters: 66, category: ApostolicFathers, hasPrologue: Some(true)}), // index 111
+  Some({id: "1Clem", sbl: "1 Clem.", name: "1 Clement", chapters: 65, category: ApostolicFathers, hasPrologue: Some(true)}), // index 111
   Some({id: "2Clem", sbl: "2 Clem.", name: "2 Clement", chapters: 20, category: ApostolicFathers, hasPrologue: Some(false)}), // index 112
-  Some({id: "Did", sbl: "Did.", name: "Didache", chapters: 17, category: ApostolicFathers, hasPrologue: Some(false)}), // index 113
-  Some({id: "Diogn", sbl: "Diogn.", name: "Diognetus", chapters: 13, category: ApostolicFathers, hasPrologue: Some(false)}), // index 114
-  None, // index 115
-  Some({id: "IgnEph", sbl: "Ign. Eph.", name: "Ign. Eph.", chapters: 22, category: ApostolicFathers, hasPrologue: Some(true)}), // index 116
-  Some({id: "IgnMagn", sbl: "Ign. Magn.", name: "Ign. Magn.", chapters: 16, category: ApostolicFathers, hasPrologue: Some(true)}), // index 117
-  Some({id: "IgnPhild", sbl: "Ign. Phild.", name: "Ign. Phild.", chapters: 12, category: ApostolicFathers, hasPrologue: Some(true)}), // index 118
-  Some({id: "IgnPol", sbl: "Ign. Pol.", name: "Ign. Pol.", chapters: 9, category: ApostolicFathers, hasPrologue: Some(true)}), // index 119
-  Some({id: "IgnRom", sbl: "Ign. Rom.", name: "Ign. Rom.", chapters: 11, category: ApostolicFathers, hasPrologue: Some(true)}), // index 120
-  Some({id: "IgnSmyrn", sbl: "Ign. Smyrn.", name: "Ign. Smyrn.", chapters: 14, category: ApostolicFathers, hasPrologue: Some(true)}), // index 121
-  Some({id: "IgnTrall", sbl: "Ign. Trall.", name: "Ign. Trall.", chapters: 14, category: ApostolicFathers, hasPrologue: Some(true)}), // index 122
-  Some({id: "MartPol", sbl: "Mart. Pol.", name: "Mart. Pol.", chapters: 23, category: ApostolicFathers, hasPrologue: Some(true)}), // index 123
-  Some({id: "PolPhil", sbl: "Pol. Phil.", name: "Pol. Phil.", chapters: 15, category: ApostolicFathers, hasPrologue: Some(true)}), // index 124
+  Some({id: "Did", sbl: "Did.", name: "Didache", chapters: 16, category: ApostolicFathers, hasPrologue: Some(true)}), // index 113
+  Some({id: "Diogn", sbl: "Diogn.", name: "Diognetus", chapters: 12, category: ApostolicFathers, hasPrologue: Some(false)}), // index 114
+  None, // index 115 Shepherd of Hermas
+  Some({id: "IgnEph", sbl: "Ign. Eph.", name: "Ign. Eph.", chapters: 21, category: ApostolicFathers, hasPrologue: Some(true)}), // index 116
+  Some({id: "IgnMagn", sbl: "Ign. Magn.", name: "Ign. Magn.", chapters: 15, category: ApostolicFathers, hasPrologue: Some(true)}), // index 117
+  Some({id: "IgnPhild", sbl: "Ign. Phild.", name: "Ign. Phild.", chapters: 11, category: ApostolicFathers, hasPrologue: Some(true)}), // index 118
+  Some({id: "IgnPol", sbl: "Ign. Pol.", name: "Ign. Pol.", chapters: 8, category: ApostolicFathers, hasPrologue: Some(true)}), // index 119
+  Some({id: "IgnRom", sbl: "Ign. Rom.", name: "Ign. Rom.", chapters: 10, category: ApostolicFathers, hasPrologue: Some(true)}), // index 120
+  Some({id: "IgnSmyrn", sbl: "Ign. Smyrn.", name: "Ign. Smyrn.", chapters: 13, category: ApostolicFathers, hasPrologue: Some(true)}), // index 121
+  Some({id: "IgnTrall", sbl: "Ign. Trall.", name: "Ign. Trall.", chapters: 13, category: ApostolicFathers, hasPrologue: Some(true)}), // index 122
+  Some({id: "MartPol", sbl: "Mart. Pol.", name: "Mart. Pol.", chapters: 22, category: ApostolicFathers, hasPrologue: Some(true)}), // index 123
+  Some({id: "PolPhil", sbl: "Pol. Phil.", name: "Pol. Phil.", chapters: 14, category: ApostolicFathers, hasPrologue: Some(true)}), // index 124
 ]
 
 // Helper array containing only non-null books (for backward compatibility)
