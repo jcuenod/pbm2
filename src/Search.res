@@ -70,6 +70,7 @@ let getRowBookIndex = (row: array<array<ParabibleApi.matchingText>>) => {
 
 @react.component
 let make = (
+  ~currentBook: option<BibleData.book>,
   ~searchTerms: array<ParabibleApi.searchTermData>,
   ~selectedModuleIds: array<int>,
   ~availableModules: array<ParabibleApi.moduleInfo>,
@@ -304,6 +305,8 @@ let make = (
         let reference = switch corpusFilter {
         | "ot" => Some("Gen-Mal")
         | "nt" => Some("Mat-Rev")
+        | "bible" => Some("Gen-Rev")
+        | "current" => currentBook->Option.map(book => book.id)
         | _ => None
         }
 
@@ -320,6 +323,15 @@ let make = (
             setSearchResults(_ => Some(data))
             setResultCount(_ => data.count)
             setLoading(_ => false)
+            // if pageNumber >= totalPages, go back to last valid page
+            let totalPages = if data.count <= 0 {
+              0
+            } else {
+              (data.count + pageSize - 1) / pageSize
+            }
+            if currentPage >= totalPages && totalPages > 0 {
+              setCurrentPage(_ => totalPages - 1)
+            }
           }
         | Error(err) => {
             setError(_ => Some(err))
@@ -409,9 +421,8 @@ let make = (
               onClick={_ => {
                 onSelect(val)
               }}
-              disabled={val == "current"}
             >
-              <span className={val == "current" ? "opacity-50" : ""}> {React.string(txt)} </span>
+              <span> {React.string(txt)} </span>
               {if val == currentValue {
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
@@ -1155,7 +1166,11 @@ let make = (
                   ("none", "No Filter"),
                   ("ot", "Old Testament"),
                   ("nt", "New Testament"),
-                  ("current", "Current Book"),
+                  ("bible", "Whole Bible"),
+                  ...(switch currentBook {
+                    | Some(book) => [("current", book.name)]
+                    | None => []
+                  }),
                 ],
                 val => setCorpusFilter(_ => val),
               )}

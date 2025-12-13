@@ -290,9 +290,11 @@ let fetchTermSearch = async (
   try {
     let termParams = encodeSearchTerms(searchTerms)
     let refParam = switch reference {
-    | Some(ref) => `&reference=${encodeURIComponent(ref)}`
+    | Some(ref) => `&corpusFilter=${encodeURIComponent(ref)}`
     | None => ""
     }
+
+    reference->Console.log
 
     let url = `https://dev.parabible.com/api/v2/termSearch?${termParams}&modules=${modules}&treeNodeType=${treeNodeType}${refParam}&pageSize=${pageSize->Int.toString}&page=${pageNumber->Int.toString}`
 

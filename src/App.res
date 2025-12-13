@@ -30,6 +30,10 @@ let make = () => {
 
   // Search terms state
   let (searchTerms, setSearchTerms) = React.useState(() => initialState.searchTerms)
+  let (currentBook, setCurrentBook) = React.useState(() => switch initialState.readingPosition {
+    | Some(pos) => pos.book->BibleData.getBookById
+    | None => None
+  })
 
   // Dark mode state
   let (darkMode, setDarkMode) = React.useState(() => initialState.darkMode)
@@ -189,6 +193,7 @@ let make = () => {
 
   let handleReadingPositionChange = (book: string, chapter: int, verse: int) => {
     StateService.saveReadingPosition({book, chapter, verse})
+    setCurrentBook(_ => BibleData.getBookById(book))
   }
 
   let pageFor = (~idx) =>
@@ -211,6 +216,7 @@ let make = () => {
       />
     | 2 =>
       <Search
+        currentBook
         searchTerms
         selectedModuleIds
         availableModules

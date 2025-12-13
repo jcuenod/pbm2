@@ -205,6 +205,9 @@ let getBookByIndex = (bookIndex: int): option<book> =>
     booksWithIndices->Array.get(bookIndex - 1)->Option.flatMap(x => x)
   }
 
+let getBookById = (bookId: string): option<book> =>
+  books->Array.find(book => book.id == bookId)
+
 let groupBooksByRow = (books: array<book>) => {
   let rows = []
   let currentRow = []
