@@ -98,7 +98,7 @@ let make = (
   let (newAttrValue, setNewAttrValue) = React.useState(() => "")
   let (isAtScrollEnd, setIsAtScrollEnd) = React.useState(() => false)
   let (isScrollable, setIsScrollable) = React.useState(() => false)
-  
+
   let (collapsed, _, handleScroll) = Hooks.useCollapsibleHeader()
 
   // Search settings
@@ -115,7 +115,7 @@ let make = (
       setExpandedSetting(_ => None)
     }, 300)
   }
-  
+
   let pageSize = 20
 
   let clearEditingState = () => {
@@ -214,13 +214,12 @@ let make = (
 
   let saveDraft = () => {
     switch (editingTermIndex, editingDraft) {
-    | (Some(idx), Some(term)) => {
-        if term.attributes->Array.length == 0 {
-          setShowDeleteConfirmDialog(_ => true)
-        } else {
-          onUpdateSearchTerm(idx, term)
-          clearEditingState()
-        }
+    | (Some(idx), Some(term)) =>
+      if term.attributes->Array.length == 0 {
+        setShowDeleteConfirmDialog(_ => true)
+      } else {
+        onUpdateSearchTerm(idx, term)
+        clearEditingState()
       }
     | _ => ()
     }
@@ -276,14 +275,18 @@ let make = (
 
   // Fetch search results when searchTerms, selectedModuleIds, or availableModules change
   React.useEffect7(() => {
-    if searchTerms->Array.length > 0 && selectedModuleIds->Array.length > 0 && availableModules->Array.length > 0 {
+    if (
+      searchTerms->Array.length > 0 &&
+      selectedModuleIds->Array.length > 0 &&
+      availableModules->Array.length > 0
+    ) {
       setLoading(_ => true)
       setError(_ => None)
 
       let fetchData = async () => {
         // Reorder modules: base module first, then others in selected order
         let orderedModuleIds = switch baseModuleId {
-        | Some(baseId) => 
+        | Some(baseId) =>
           let others = selectedModuleIds->Array.filter(id => id != baseId)
           [baseId]->Array.concat(others)
         | None => selectedModuleIds
@@ -297,7 +300,7 @@ let make = (
             ->Option.map((m: ParabibleApi.moduleInfo) => m.abbreviation)
           })
           ->Array.join(",")
-        
+
         let reference = switch corpusFilter {
         | "ot" => Some("Gen-Mal")
         | "nt" => Some("Mat-Rev")
@@ -310,7 +313,7 @@ let make = (
           ~pageSize,
           ~pageNumber=currentPage,
           ~treeNodeType=syntaxRange,
-          ~reference=?reference,
+          ~reference?,
         )
         switch result {
         | Ok(data) => {
@@ -331,21 +334,35 @@ let make = (
       setResultCount(_ => 0)
     }
     None
-  }, (searchTerms, selectedModuleIds, currentPage, availableModules, baseModuleId, syntaxRange, corpusFilter))
+  }, (
+    searchTerms,
+    selectedModuleIds,
+    currentPage,
+    availableModules,
+    baseModuleId,
+    syntaxRange,
+    corpusFilter,
+  ))
 
   let renderSettingItem = (id, label, currentValue, options, onSelect) => {
     let isExpanded = expandedSetting == Some(id)
-    let currentValueLabel = options->Array.find(((v, _)) => v == currentValue)->Option.map(((_, l)) => l)->Option.getOr(currentValue)
-    
+    let currentValueLabel =
+      options
+      ->Array.find(((v, _)) => v == currentValue)
+      ->Option.map(((_, l)) => l)
+      ->Option.getOr(currentValue)
+
     <div className="border-b border-stone-200 dark:border-stone-800 last:border-0">
-      <button 
+      <button
         className="w-full flex items-center justify-between p-4 text-left"
         onClick={_ => setExpandedSetting(prev => prev == Some(id) ? None : Some(id))}
       >
         <div>
           <div className="flex items-center gap-2">
-            <span className="font-semibold text-stone-900 dark:text-stone-100">{React.string(label)}</span>
-            <div 
+            <span className="font-semibold text-stone-900 dark:text-stone-100">
+              {React.string(label)}
+            </span>
+            <div
               className="text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 p-1 -m-1"
               onClick={e => {
                 ReactEvent.Mouse.stopPropagation(e)
@@ -353,7 +370,12 @@ let make = (
               }}
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
               </svg>
             </div>
           </div>
@@ -361,43 +383,53 @@ let make = (
             {React.string(currentValueLabel)}
           </div>
         </div>
-        <svg 
-          className={"w-5 h-5 text-stone-400 transition-transform " ++ (isExpanded ? "rotate-180" : "")} 
-          fill="none" stroke="currentColor" viewBox="0 0 24 24"
+        <svg
+          className={"w-5 h-5 text-stone-400 transition-transform " ++ (
+            isExpanded ? "rotate-180" : ""
+          )}
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
         >
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
         </svg>
       </button>
-      
+
       <div className={"overflow-hidden transition-all " ++ (isExpanded ? "max-h-96" : "max-h-0")}>
         <div className="p-4 pt-0 space-y-1 max-h-60">
-          {options->Array.map(((val, txt)) => 
+          {options
+          ->Array.map(((val, txt)) =>
             <button
               key={val}
               className={"w-full flex items-center justify-between px-3 py-3 rounded-lg text-sm font-medium transition-colors " ++ (
-                val == currentValue ? "bg-teal-50 dark:bg-teal-900/20 text-teal-700 dark:text-teal-300" : "text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800"
+                val == currentValue
+                  ? "bg-teal-50 dark:bg-teal-900/20 text-teal-700 dark:text-teal-300"
+                  : "text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800"
               )}
               onClick={_ => {
                 onSelect(val)
               }}
               disabled={val == "current"}
             >
-              <span className={val == "current" ? "opacity-50" : ""}>{React.string(txt)}</span>
+              <span className={val == "current" ? "opacity-50" : ""}> {React.string(txt)} </span>
               {if val == currentValue {
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                  <path
+                    strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"
+                  />
                 </svg>
               } else {
                 React.null
               }}
             </button>
-          )->React.array}
+          )
+          ->React.array}
         </div>
       </div>
     </div>
   }
 
-  let getInfoContent = (id) => {
+  let getInfoContent = id => {
     switch id {
     | "syntax" => "Determines the scope in which search terms must be found. 'Parallel' allows terms to be found across different Bible versions within the same verse. Other options (Verse, Sentence, etc.) require all terms to be found within that specific unit in a single version."
     | "corpus" => "Filters the search results to a specific collection of books, such as the Old Testament or New Testament."
@@ -551,9 +583,14 @@ let make = (
                         }}
                       disabled={isAtScrollEnd}
                     >
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg
+                        className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                      >
                         <path
-                          strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="2"
+                          d="M9 5l7 7-7 7"
                         />
                       </svg>
                     </button>
@@ -581,18 +618,18 @@ let make = (
         </div>
       | (false, None, Some(results)) => {
           let highlightPairs = results.matchingWords->Array.map(mw => (mw.wid, mw.moduleId))
-          
+
           let groupedRows = results.matchingText->Array.reduce([], (acc, row) => {
             let rowBookIndex = getRowBookIndex(row)
             let rowSection = getSection(rowBookIndex)
-            
+
             switch acc->Array.get(acc->Array.length - 1) {
             | Some((lastSection, lastRows)) if lastSection == rowSection =>
-                lastRows->Array.push(row)
-                acc
+              lastRows->Array.push(row)
+              acc
             | _ =>
-                acc->Array.push((rowSection, [row]))
-                acc
+              acc->Array.push((rowSection, [row]))
+              acc
             }
           })
 
@@ -600,23 +637,25 @@ let make = (
             {groupedRows
             ->Array.map(((section, rows)) => {
               let presentModuleIds = rows->Array.reduce([], (acc, row) => {
-                row->Array.forEach(moduleResults => {
-                  let matches = moduleResults->Array.filter(hasRenderableContent)
-                  switch matches->Array.get(0) {
-                  | Some(firstMatch) =>
-                    let id = firstMatch.moduleId
-                    if !(acc->Array.includes(id)) {
-                      acc->Array.push(id)
+                row->Array.forEach(
+                  moduleResults => {
+                    let matches = moduleResults->Array.filter(hasRenderableContent)
+                    switch matches->Array.get(0) {
+                    | Some(firstMatch) =>
+                      let id = firstMatch.moduleId
+                      if !(acc->Array.includes(id)) {
+                        acc->Array.push(id)
+                      }
+                    | None => ()
                     }
-                  | None => ()
-                  }
-                })
+                  },
+                )
                 acc
               })
 
               let sectionModuleIds =
                 selectedModuleIds->Array.filter(id => presentModuleIds->Array.includes(id))
-              
+
               let columnCount = sectionModuleIds->Array.length
 
               if columnCount == 0 {
@@ -631,29 +670,31 @@ let make = (
                     ->Array.mapWithIndex((row, rowIdx) => {
                       let effectiveBaseModuleId =
                         baseModuleId
-                        ->Option.flatMap(id =>
-                          if selectedModuleIds->Array.includes(id) {
-                            Some(id)
-                          } else {
-                            None
-                          }
+                        ->Option.flatMap(
+                          id =>
+                            if selectedModuleIds->Array.includes(id) {
+                              Some(id)
+                            } else {
+                              None
+                            },
                         )
                         ->Option.orElse(selectedModuleIds->Array.get(0))
                         ->Option.orElse(sectionModuleIds->Array.get(0))
 
                       let baseMatch =
                         effectiveBaseModuleId
-                        ->Option.flatMap(baseId =>
-                          row
-                          ->Array.find(moduleResults =>
-                            moduleResults->Array.some(m => m.moduleId == baseId)
-                          )
-                          ->Option.flatMap(matches => matches->Array.get(0))
+                        ->Option.flatMap(
+                          baseId =>
+                            row
+                            ->Array.find(
+                              moduleResults => moduleResults->Array.some(m => m.moduleId == baseId),
+                            )
+                            ->Option.flatMap(matches => matches->Array.get(0)),
                         )
                         ->Option.orElse(
                           row
                           ->Array.find(moduleResults => moduleResults->Array.length > 0)
-                          ->Option.flatMap(matches => matches->Array.get(0))
+                          ->Option.flatMap(matches => matches->Array.get(0)),
                         )
 
                       let referenceLabel = formatReference(baseMatch)
@@ -678,26 +719,43 @@ let make = (
                           }}
                         >
                           {sectionModuleIds
-                          ->Array.map(moduleId => {
-                            let moduleAbbrev = getModuleAbbrev(moduleId)
-                            let matches =
-                              row
-                              ->Array.find(moduleResults =>
-                                moduleResults->Array.some(m => m.moduleId == moduleId)
-                              )
-                              ->Option.map(ms => ms->Array.filter(hasRenderableContent))
-                              ->Option.getOr([])
+                          ->Array.map(
+                            moduleId => {
+                              let moduleAbbrev = getModuleAbbrev(moduleId)
+                              let matches =
+                                row
+                                ->Array.find(
+                                  moduleResults =>
+                                    moduleResults->Array.some(m => m.moduleId == moduleId),
+                                )
+                                ->Option.map(ms => ms->Array.filter(hasRenderableContent))
+                                ->Option.getOr([])
 
-                            <div
-                              key={`${rowIdx->Int.toString}-${moduleId->Int.toString}`}
-                              className="space-y-3"
-                            >
-                              {if matches->Array.length > 0 {
-                                matches
-                                ->Array.map(match => {
+                              <div
+                                key={`${rowIdx->Int.toString}-${moduleId->Int.toString}`}
+                                className="space-y-3"
+                              >
+                                {if matches->Array.length > 0 {
+                                  matches
+                                  ->Array.map(
+                                    match => {
+                                      <VerseColumn
+                                        key={`${moduleId->Int.toString}-${match.rid->Int.toString}`}
+                                        match={Some(match)}
+                                        baseMatch={baseMatch}
+                                        moduleId
+                                        moduleAbbrev
+                                        selectedWord
+                                        onWordClick
+                                        highlightWords=?Some(highlightPairs)
+                                      />
+                                    },
+                                  )
+                                  ->React.array
+                                } else {
                                   <VerseColumn
-                                    key={`${moduleId->Int.toString}-${match.rid->Int.toString}`}
-                                    match={Some(match)}
+                                    key={`${moduleId->Int.toString}-empty`}
+                                    match={None}
                                     baseMatch={baseMatch}
                                     moduleId
                                     moduleAbbrev
@@ -705,22 +763,10 @@ let make = (
                                     onWordClick
                                     highlightWords=?Some(highlightPairs)
                                   />
-                                })
-                                ->React.array
-                              } else {
-                                <VerseColumn
-                                  key={`${moduleId->Int.toString}-empty`}
-                                  match={None}
-                                  baseMatch={baseMatch}
-                                  moduleId
-                                  moduleAbbrev
-                                  selectedWord
-                                  onWordClick
-                                  highlightWords=?Some(highlightPairs)
-                                />
-                              }}
-                            </div>
-                          })
+                                }}
+                              </div>
+                            },
+                          )
                           ->React.array}
                         </div>
                       </div>
@@ -927,7 +973,8 @@ let make = (
             setShowAddAttrDialog(_ => false)
             setNewAttrKey(_ => "")
             setNewAttrValue(_ => "")
-          }}>
+          }}
+        >
           <div className="space-y-3">
             <div>
               <label className="block text-sm font-medium text-stone-700 dark:text-stone-300 mb-1">
@@ -940,7 +987,8 @@ let make = (
                   let val = ReactEvent.Form.target(e)["value"]
                   setNewAttrKey(_ => val)
                   setNewAttrValue(_ => "")
-                }}>
+                }}
+              >
                 <option value=""> {React.string("Select attribute")} </option>
                 {featuresData.features
                 ->Array.map(f =>
@@ -951,33 +999,39 @@ let make = (
             </div>
             {if newAttrKey != "" {
               <div>
-                <label className="block text-sm font-medium text-stone-700 dark:text-stone-300 mb-1">
+                <label
+                  className="block text-sm font-medium text-stone-700 dark:text-stone-300 mb-1"
+                >
                   {React.string("Attribute Value")}
                 </label>
-                {let featureDef = featuresData.features->Array.find(f => f.key == newAttrKey)
-                switch featureDef {
-                | Some(def) if def.enum =>
-                  let possibleValues = featuresData.values->Array.filter(v => v.feature == newAttrKey)
-                  <select
-                    className="w-full border border-stone-200 dark:border-stone-700 bg-transparent px-3 py-2 text-sm"
-                    value={newAttrValue}
-                    onChange={e => setNewAttrValue(_ => ReactEvent.Form.target(e)["value"])}>
-                    <option value=""> {React.string("Select value")} </option>
-                    {possibleValues
-                    ->Array.map(v =>
-                      <option key={v.key} value={v.key}> {React.string(v.value)} </option>
-                    )
-                    ->React.array}
-                  </select>
-                | _ =>
-                  <input
-                    className="w-full border border-stone-200 dark:border-stone-700 bg-transparent px-3 py-2 text-sm"
-                    type_="text"
-                    value={newAttrValue}
-                    onChange={e => setNewAttrValue(_ => ReactEvent.Form.target(e)["value"])}
-                    placeholder="Enter value"
-                  />
-                }}
+                {
+                  let featureDef = featuresData.features->Array.find(f => f.key == newAttrKey)
+                  switch featureDef {
+                  | Some(def) if def.enum =>
+                    let possibleValues =
+                      featuresData.values->Array.filter(v => v.feature == newAttrKey)
+                    <select
+                      className="w-full border border-stone-200 dark:border-stone-700 bg-transparent px-3 py-2 text-sm"
+                      value={newAttrValue}
+                      onChange={e => setNewAttrValue(_ => ReactEvent.Form.target(e)["value"])}
+                    >
+                      <option value=""> {React.string("Select value")} </option>
+                      {possibleValues
+                      ->Array.map(v =>
+                        <option key={v.key} value={v.key}> {React.string(v.value)} </option>
+                      )
+                      ->React.array}
+                    </select>
+                  | _ =>
+                    <input
+                      className="w-full border border-stone-200 dark:border-stone-700 bg-transparent px-3 py-2 text-sm"
+                      type_="text"
+                      value={newAttrValue}
+                      onChange={e => setNewAttrValue(_ => ReactEvent.Form.target(e)["value"])}
+                      placeholder="Enter value"
+                    />
+                  }
+                }
               </div>
             } else {
               React.null
@@ -990,7 +1044,8 @@ let make = (
                 setShowAddAttrDialog(_ => false)
                 setNewAttrKey(_ => "")
                 setNewAttrValue(_ => "")
-              }}>
+              }}
+            >
               {React.string("Cancel")}
             </button>
             <button
@@ -998,42 +1053,46 @@ let make = (
                 canAddNewAttr ? "bg-teal-600 hover:bg-teal-700" : "bg-teal-300 cursor-not-allowed"
               )}
               disabled={!canAddNewAttr}
-              onClick={_ => addDraftAttribute()}>
+              onClick={_ => addDraftAttribute()}
+            >
               {React.string("Confirm")}
             </button>
           </div>
         </Dialog>
-          <Dialog
-            show=showDeleteConfirmDialog
-            header={React.string("Delete term?")}
-            showCloseButton=false
-            closeOnOverlayClick=true
-            onClose={_ => setShowDeleteConfirmDialog(_ => false)}>
-            <div className="mb-4">
-              <p className="text-sm text-stone-600 dark:text-stone-300 mt-2">
-                {React.string(
-                  "This term has no attributes — saving will remove it. Cancel will exit without saving. Do you want to delete the term?",
-                )}
-              </p>
-            </div>
-            <div className="flex gap-3">
-              <button
-                className="flex-1 h-10 border border-stone-300 dark:border-stone-700 text-stone-700 dark:text-stone-200 font-semibold text-sm"
-                onClick={_ => {
-                  setShowDeleteConfirmDialog(_ => false)
-                }}>
-                {React.string("Cancel")}
-              </button>
-              <button
-                className="flex-1 h-10 font-semibold text-sm text-white bg-rose-600 hover:bg-rose-700"
-                onClick={_ => {
-                  setShowDeleteConfirmDialog(_ => false)
-                  deleteTerm(idx)
-                }}>
-                {React.string("Delete term")}
-              </button>
-            </div>
-          </Dialog>
+        <Dialog
+          show=showDeleteConfirmDialog
+          header={React.string("Delete term?")}
+          showCloseButton=false
+          closeOnOverlayClick=true
+          onClose={_ => setShowDeleteConfirmDialog(_ => false)}
+        >
+          <div className="mb-4">
+            <p className="text-sm text-stone-600 dark:text-stone-300 mt-2">
+              {React.string(
+                "This term has no attributes — saving will remove it. Cancel will exit without saving. Do you want to delete the term?",
+              )}
+            </p>
+          </div>
+          <div className="flex gap-3">
+            <button
+              className="flex-1 h-10 border border-stone-300 dark:border-stone-700 text-stone-700 dark:text-stone-200 font-semibold text-sm"
+              onClick={_ => {
+                setShowDeleteConfirmDialog(_ => false)
+              }}
+            >
+              {React.string("Cancel")}
+            </button>
+            <button
+              className="flex-1 h-10 font-semibold text-sm text-white bg-rose-600 hover:bg-rose-700"
+              onClick={_ => {
+                setShowDeleteConfirmDialog(_ => false)
+                deleteTerm(idx)
+              }}
+            >
+              {React.string("Delete term")}
+            </button>
+          </div>
+        </Dialog>
       </React.Fragment>
     | _ => React.null
     }}
@@ -1041,15 +1100,20 @@ let make = (
     {if showSettingsDialog {
       let animationClass = isSettingsClosing ? "animate-slide-down" : "animate-slide-up"
       let backdropClass = isSettingsClosing ? "animate-fade-out" : "animate-fade-in"
-      
+
       <React.Fragment>
         <div className="fixed inset-0 z-50 flex items-end">
           <div
             className={"absolute inset-0 bg-black/40 " ++ backdropClass}
             onClick={_ => closeSettings()}
           />
-          <div className={"relative w-full bg-white dark:bg-stone-900 shadow-2xl max-h-[85vh] flex flex-col overflow-hidden " ++ animationClass}>
-            <div className="flex items-center justify-between p-5 border-b border-stone-200 dark:border-stone-800">
+          <div
+            className={"relative w-full bg-white dark:bg-stone-900 shadow-2xl max-h-[85vh] flex flex-col overflow-hidden " ++
+            animationClass}
+          >
+            <div
+              className="flex items-center justify-between p-5 border-b border-stone-200 dark:border-stone-800"
+            >
               <h3 className="text-lg font-semibold text-stone-900 dark:text-stone-100">
                 {React.string("Search Settings")}
               </h3>
@@ -1080,9 +1144,9 @@ let make = (
                   ("clause", "Clause"),
                   ("phrase", "Phrase"),
                 ],
-                val => setSyntaxRange(_ => val)
+                val => setSyntaxRange(_ => val),
               )}
-              
+
               {renderSettingItem(
                 "corpus",
                 "Corpus Filter",
@@ -1093,18 +1157,19 @@ let make = (
                   ("nt", "New Testament"),
                   ("current", "Current Book"),
                 ],
-                val => setCorpusFilter(_ => val)
+                val => setCorpusFilter(_ => val),
               )}
             </div>
           </div>
         </div>
-        
+
         <Dialog
           show={infoDialog == Some("syntax")}
           header={React.string("Syntax Range")}
           showCloseButton=true
           closeOnOverlayClick=true
-          onClose={_ => setInfoDialog(_ => None)}>
+          onClose={_ => setInfoDialog(_ => None)}
+        >
           <p className="text-stone-600 dark:text-stone-300 leading-relaxed">
             {React.string(getInfoContent("syntax"))}
           </p>
@@ -1114,7 +1179,8 @@ let make = (
           header={React.string("Corpus Filter")}
           showCloseButton=true
           closeOnOverlayClick=true
-          onClose={_ => setInfoDialog(_ => None)}>
+          onClose={_ => setInfoDialog(_ => None)}
+        >
           <p className="text-stone-600 dark:text-stone-300 leading-relaxed">
             {React.string(getInfoContent("corpus"))}
           </p>
