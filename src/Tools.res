@@ -155,7 +155,7 @@ let make = (
   let (error, setError) = React.useState(() => None)
   let (selectedAttributes, setSelectedAttributes) = React.useState(() => [])
   let (showMenu, setShowMenu) = React.useState(() => false)
-  
+
   // // Dictionary state
   // let (dictionaryEntries, setDictionaryEntries) = React.useState(() => None)
   // let (dictionaryLoading, setDictionaryLoading) = React.useState(() => false)
@@ -244,7 +244,8 @@ let make = (
         // Check if click is outside the FAB container
         let fabContainer = Webapi.Dom.document->Webapi.Dom.Document.querySelector(".fab-container")
         switch fabContainer {
-        | Some(container) => if !(container->Webapi.Dom.Element.contains(~child=target)) {
+        | Some(container) =>
+          if !(container->Webapi.Dom.Element.contains(~child=target)) {
             setShowMenu(_ => false)
           }
         | None => ()
@@ -310,100 +311,109 @@ let make = (
       {switch activeTab {
       | WordDetails =>
         switch (loading, error, wordDetails, selectedWord) {
-    | (true, _, _, _) => <div className="text-center py-8"> {React.string("Loading...")} </div>
-    | (_, Some(err), _, _) =>
-      <div className="text-center py-8 text-red-600 dark:text-red-400">
-        {React.string(`Error: ${err}`)}
-      </div>
-    | (false, None, Some(details), Some((_wid, _moduleId))) => {
-        let (primary, secondary) = formatWordDetails(details)
-
-        <div className="flex flex-col h-full">
-          // Primary information (lexeme and gloss)
-          <div
-            className="bg-teal-50 dark:bg-teal-950 border-t-2 border-b-2 border-teal-200 dark:border-teal-800 p-4 flex items-center justify-center gap-4"
-          >
-            {primary
-            ->Array.mapWithIndex((d, i) => {
-              let fontFamily = if i == 0 {
-                "font-['SBL_BibLit']"
-              } else {
-                ""
-              }
-              <div key={Int.toString(i)} className={`text-center font-bold text-xl ${fontFamily}`}>
-                {React.string(d)}
-              </div>
-            })
-            ->React.array}
+        | (true, _, _, _) => <div className="text-center py-8"> {React.string("Loading...")} </div>
+        | (_, Some(err), _, _) =>
+          <div className="text-center py-8 text-red-600 dark:text-red-400">
+            {React.string(`Error: ${err}`)}
           </div>
+        | (false, None, Some(details), Some((_wid, _moduleId))) => {
+            let (primary, secondary) = formatWordDetails(details)
 
-          // Secondary information (morphology)
-          <div
-            className="bg-gray-50 dark:bg-stone-900 border-b border-gray-200 dark:border-stone-700 p-3 text-center text-sm"
-          >
-            {React.string(secondary->Array.join(" ")->String.toLowerCase)}
-          </div>
-
-          // Full attribute list
-          <div className="flex-1 overflow-auto p-4 pb-24">
-            <h2 className="text-lg font-semibold mb-3 text-gray-700 dark:text-gray-300">
-              {React.string("All Attributes")}
-            </h2>
-            <div className="space-y-2">
-              {details
-              ->Array.map(attr => {
-                let isSelected =
-                  selectedAttributes->Array.some(((k, v)) => k == attr.key && v == attr.value)
-                let bgColor = isSelected
-                  ? "bg-teal-100 dark:bg-teal-900 border-teal-500"
-                  : "bg-white dark:bg-stone-800 border-gray-200 dark:border-stone-700"
-                let langClass = if isHebrew(attr.value) {
-                  "font-['SBL_BibLit'] text-xl rtl text-right"
-                } else if isGreek(attr.value) {
-                  "font-['SBL_BibLit'] text-lg tracking-wide"
-                } else {
-                  ""
-                }
-
-                <div
-                  key={attr.key}
-                  className={`border rounded p-3 cursor-pointer transition-colors ${bgColor}`}
-                  onClick={_ => {
-                    setSelectedAttributes(current => {
-                      let attrTuple = (attr.key, attr.value)
-                      if current->Array.some(a => a == attrTuple) {
-                        current->Array.filter(a => a != attrTuple)
-                      } else {
-                        Array.concat(current, [attrTuple])
-                      }
-                    })
-                  }}
-                >
+            <div className="flex flex-col h-full">
+              // Primary information (lexeme and gloss)
+              <div
+                className="bg-teal-50 dark:bg-teal-950 border-t-2 border-b-2 border-teal-200 dark:border-teal-800 p-4 flex items-center justify-center gap-4"
+              >
+                {primary
+                ->Array.mapWithIndex((d, i) => {
+                  let fontFamily = if i == 0 {
+                    "font-['SBL_BibLit']"
+                  } else {
+                    ""
+                  }
                   <div
-                    className="font-semibold text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide"
+                    key={Int.toString(i)} className={`text-center font-bold text-xl ${fontFamily}`}
                   >
-                    {translateFeatureKey(attr.key)->React.string}
+                    {React.string(d)}
                   </div>
-                  <div className={`mt-1 text-gray-900 dark:text-gray-100 ${langClass}`}>
-                    {translateFeatureValue(attr.key, attr.value)->React.string}
-                  </div>
+                })
+                ->React.array}
+              </div>
+
+              // Secondary information (morphology)
+              <div
+                className="bg-gray-50 dark:bg-stone-900 border-b border-gray-200 dark:border-stone-700 p-3 text-center text-sm"
+              >
+                {React.string(secondary->Array.join(" ")->String.toLowerCase)}
+              </div>
+
+              // Full attribute list
+              <div className="flex-1 overflow-auto p-4 pb-24">
+                <h2 className="text-lg font-semibold mb-3 text-gray-700 dark:text-gray-300">
+                  {React.string("All Attributes")}
+                </h2>
+                <div className="space-y-2">
+                  {details
+                  ->Array.map(attr => {
+                    let isSelected =
+                      selectedAttributes->Array.some(((k, v)) => k == attr.key && v == attr.value)
+                    let bgColor = isSelected
+                      ? "bg-teal-100 dark:bg-teal-900 border-teal-500"
+                      : "bg-white dark:bg-stone-800 border-gray-200 dark:border-stone-700"
+                    let langClass = if isHebrew(attr.value) {
+                      "font-['SBL_BibLit'] text-xl rtl text-right"
+                    } else if isGreek(attr.value) {
+                      "font-['SBL_BibLit'] text-lg tracking-wide"
+                    } else {
+                      ""
+                    }
+
+                    <div
+                      key={attr.key}
+                      className={`border rounded p-3 cursor-pointer transition-colors ${bgColor}`}
+                      onClick={_ => {
+                        setSelectedAttributes(current => {
+                          let attrTuple = (attr.key, attr.value)
+                          if current->Array.some(a => a == attrTuple) {
+                            current->Array.filter(a => a != attrTuple)
+                          } else {
+                            Array.concat(current, [attrTuple])
+                          }
+                        })
+                      }}
+                    >
+                      <div
+                        className="font-semibold text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide"
+                      >
+                        {translateFeatureKey(attr.key)->React.string}
+                      </div>
+                      <div className={`mt-1 text-gray-900 dark:text-gray-100 ${langClass}`}>
+                        {translateFeatureValue(attr.key, attr.value)->React.string}
+                      </div>
+                    </div>
+                  })
+                  ->React.array}
                 </div>
-              })
-              ->React.array}
-            </div>
-          </div>
+              </div>
 
-          // FAB Button
-          <div className="fab-container fixed bottom-[1rem] right-6 flex flex-col items-end gap-0">
-            // Backdrop overlay when menu is open
-            {showMenu
-              ? <div className="fixed inset-0 z-10" onClick={_ => setShowMenu(_ => false)} />
-              : React.null}
-
-            // Menu with arrow
-            {showMenu
-              ? <div
-                  className="relative transition-all duration-200 mb-3 opacity-100 translate-y-0 z-20"
+              // FAB Button
+              <div
+                className="fab-container fixed bottom-[1rem] right-6 flex flex-col items-end gap-0"
+              >
+                // Backdrop overlay when menu is open (semi-transparent, click to close)
+                <div
+                  className={"fixed inset-0 transition-opacity duration-120 bg-black/40 dark:bg-black/50 z-10 " ++ (
+                    showMenu ? "opacity-100" : "opacity-0 pointer-events-none"
+                  )}
+                  role="presentation"
+                  ariaHidden={true}
+                  onClick={_ => setShowMenu(_ => false)}
+                />
+                // Menu with arrow
+                <div
+                  className={"relative w-[80vw] transition-all duration-120 mb-3 z-30 " ++ (
+                    showMenu ? "" : "-translate-y-3 opacity-0 pointer-events-none"
+                  )}
                 >
                   <div
                     className="bg-white dark:bg-stone-800 rounded-lg shadow-lg overflow-hidden border border-gray-200 dark:border-stone-700"
@@ -460,49 +470,48 @@ let make = (
                     className="absolute -bottom-1.5 right-5 w-0 h-0 border-l-8 border-r-8 border-t-8 border-l-transparent border-r-transparent border-t-white dark:border-t-stone-800"
                   />
                 </div>
-              : React.null}
 
-            // FAB
-            <button
-              onClick={_ => {
-                if hasExistingSearchTerms {
-                  setShowMenu(show => !show)
-                } else {
-                  // No existing search terms, add directly and navigate
-                  let attributes = if selectedAttributes->Array.length > 0 {
-                    selectedAttributes
-                  } else {
-                    [("lexeme", getAttr(details, "lexeme"))]
-                  }
-                  let newTerm: ParabibleApi.searchTermData = {
-                    inverted: false,
-                    attributes,
-                  }
-                  onAddSearchTerms([newTerm], false)
-                  setSelectedAttributes(_ => [])
-                }
-              }}
-              className="w-14 h-14 bg-teal-600 hover:bg-teal-700 text-white rounded-full shadow-lg flex items-center justify-center transition-all transform hover:scale-110 z-20 relative"
-              title="Search"
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                />
-              </svg>
-            </button>
+                // FAB
+                <button
+                  onClick={_ => {
+                    if hasExistingSearchTerms {
+                      setShowMenu(show => !show)
+                    } else {
+                      // No existing search terms, add directly and navigate
+                      let attributes = if selectedAttributes->Array.length > 0 {
+                        selectedAttributes
+                      } else {
+                        [("lexeme", getAttr(details, "lexeme"))]
+                      }
+                      let newTerm: ParabibleApi.searchTermData = {
+                        inverted: false,
+                        attributes,
+                      }
+                      onAddSearchTerms([newTerm], false)
+                      setSelectedAttributes(_ => [])
+                    }
+                  }}
+                  className="w-14 h-14 bg-teal-600 hover:bg-teal-700 text-white rounded-full shadow-lg flex items-center justify-center transition-all transform hover:scale-110 z-40 relative"
+                  title="Search"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                    />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          }
+        | _ =>
+          <div
+            className="flex items-center justify-center h-full text-gray-500 dark:text-gray-400 p-8 text-center"
+          >
+            {React.string("Click on a word in the Read view to see its details")}
           </div>
-        </div>
-      }
-    | _ =>
-      <div
-        className="flex items-center justify-center h-full text-gray-500 dark:text-gray-400 p-8 text-center"
-      >
-        {React.string("Click on a word in the Read view to see its details")}
-      </div>
         }
       | Dictionaries =>
         <div
@@ -510,54 +519,54 @@ let make = (
         >
           {React.string("Dictionaries is just a dream right now...")}
         </div>
-        // switch (dictionaryLoading, dictionaryError, dictionaryEntries, wordDetails) {
-        // | (true, _, _, _) => 
-        //   <div className="flex items-center justify-center h-full p-8">
-        //     <div className="text-center">
-        //       <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-600 mx-auto mb-4" />
-        //       <div className="text-gray-600 dark:text-gray-400">{React.string("Loading dictionary entry...")}</div>
-        //     </div>
-        //   </div>
-        // | (_, Some(err), _, _) =>
-        //   <div className="flex items-center justify-center h-full text-red-600 dark:text-red-400 p-8 text-center">
-        //     {React.string(`Error loading dictionary: ${err}`)}
-        //   </div>
-        // | (false, None, Some(entries), Some(details)) =>
-        //   if entries->Array.length > 0 {
-        //     <div className="flex-1 overflow-auto p-4">
-        //       {entries->Array.mapWithIndex((entry, idx) => {
-        //         <div key={entry.id} className="mb-6">
-        //           {idx == 0 ? React.null : <hr className="mb-6 border-gray-200 dark:border-stone-700" />}
-        //           <div className="bg-white dark:bg-stone-900 rounded-lg border border-gray-200 dark:border-stone-700 p-4">
-        //             <div className="mb-2 text-xs text-gray-500 dark:text-gray-400 font-mono">
-        //               {React.string("Abbot Smith")}
-        //               // {React.string(entry.uri)}
-        //             </div>
-        //             <div 
-        //               className="prose prose-sm dark:prose-invert max-w-none"
-        //               dangerouslySetInnerHTML={{"__html": entry.xmlContent}}
-        //             />
-        //           </div>
-        //         </div>
-        //       })->React.array}
-        //     </div>
-        //   } else {
-        //     let lexeme = getAttr(details, "lexeme")
-        //     <div className="flex items-center justify-center h-full text-gray-500 dark:text-gray-400 p-8 text-center">
-        //       <div>
-        //         <div className="text-lg mb-2">{React.string("No dictionary entries found")}</div>
-        //         {lexeme != "" 
-        //           ? <div className="text-sm font-['SBL_BibLit']">{React.string(`for "${lexeme}"`)}</div>
-        //           : React.null
-        //         }
-        //       </div>
-        //     </div>
-        //   }
-        // | _ =>
-        //   <div className="flex items-center justify-center h-full text-gray-500 dark:text-gray-400 p-8 text-center">
-        //     {React.string("Select a word to view dictionary entries")}
-        //   </div>
-        // }
+      // switch (dictionaryLoading, dictionaryError, dictionaryEntries, wordDetails) {
+      // | (true, _, _, _) =>
+      //   <div className="flex items-center justify-center h-full p-8">
+      //     <div className="text-center">
+      //       <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-600 mx-auto mb-4" />
+      //       <div className="text-gray-600 dark:text-gray-400">{React.string("Loading dictionary entry...")}</div>
+      //     </div>
+      //   </div>
+      // | (_, Some(err), _, _) =>
+      //   <div className="flex items-center justify-center h-full text-red-600 dark:text-red-400 p-8 text-center">
+      //     {React.string(`Error loading dictionary: ${err}`)}
+      //   </div>
+      // | (false, None, Some(entries), Some(details)) =>
+      //   if entries->Array.length > 0 {
+      //     <div className="flex-1 overflow-auto p-4">
+      //       {entries->Array.mapWithIndex((entry, idx) => {
+      //         <div key={entry.id} className="mb-6">
+      //           {idx == 0 ? React.null : <hr className="mb-6 border-gray-200 dark:border-stone-700" />}
+      //           <div className="bg-white dark:bg-stone-900 rounded-lg border border-gray-200 dark:border-stone-700 p-4">
+      //             <div className="mb-2 text-xs text-gray-500 dark:text-gray-400 font-mono">
+      //               {React.string("Abbot Smith")}
+      //               // {React.string(entry.uri)}
+      //             </div>
+      //             <div
+      //               className="prose prose-sm dark:prose-invert max-w-none"
+      //               dangerouslySetInnerHTML={{"__html": entry.xmlContent}}
+      //             />
+      //           </div>
+      //         </div>
+      //       })->React.array}
+      //     </div>
+      //   } else {
+      //     let lexeme = getAttr(details, "lexeme")
+      //     <div className="flex items-center justify-center h-full text-gray-500 dark:text-gray-400 p-8 text-center">
+      //       <div>
+      //         <div className="text-lg mb-2">{React.string("No dictionary entries found")}</div>
+      //         {lexeme != ""
+      //           ? <div className="text-sm font-['SBL_BibLit']">{React.string(`for "${lexeme}"`)}</div>
+      //           : React.null
+      //         }
+      //       </div>
+      //     </div>
+      //   }
+      // | _ =>
+      //   <div className="flex items-center justify-center h-full text-gray-500 dark:text-gray-400 p-8 text-center">
+      //     {React.string("Select a word to view dictionary entries")}
+      //   </div>
+      // }
       | Commentaries =>
         <div
           className="flex items-center justify-center h-full text-gray-500 dark:text-gray-400 p-8 text-center"
