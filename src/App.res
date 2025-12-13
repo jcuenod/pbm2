@@ -144,15 +144,12 @@ let make = () => {
     getIndexFromPath(path)
   })
   let (animatingTo, setAnimatingTo) = React.useState(() => None)
-  let (animatingFrom, setAnimatingFrom) = React.useState(() => Belt.Set.Int.empty)
   let containerSelector = "pagesContainer"
 
   let animateTo = (target: int) => {
     if target == index {
       ()
     } else {
-      let fromIdx = index
-      setAnimatingFrom(current => Belt.Set.Int.add(current, fromIdx))
       setAnimatingTo(_ => Some(target))
 
       // Trigger the index change which will cause pages to slide
@@ -160,10 +157,7 @@ let make = () => {
         setIndex(_ => target)
 
         // Clear animation state after transition
-        let _ = setTimeout(() => {
-          setAnimatingTo(_ => None)
-          setAnimatingFrom(current => Belt.Set.Int.remove(current, fromIdx))
-        }, 300)
+        let _ = setTimeout(() => setAnimatingTo(_ => None), 300)
       }, 10)
     }
   }
@@ -283,31 +277,11 @@ let make = () => {
 
   let isPageVisible = (pageIdx: int) => {
     pageIdx == index ||
-    switch animatingTo {
-    | None => false
-    | Some(target) => pageIdx == target
-    } ||
-    Belt.Set.Int.has(animatingFrom, pageIdx)
+      switch animatingTo {
+      | None => false
+      | Some(target) => pageIdx == target
+      }
   }
-
-  let renderPage = (pageIdx: int) =>
-    if (
-      isPageVisible(pageIdx) ||
-      animatingTo == Some(pageIdx) ||
-      Belt.Set.Int.has(animatingFrom, pageIdx) ||
-      index == pageIdx
-    ) {
-      <div
-        className={"absolute border-slate-400 border-r-1 -right-px top-0 bottom-0 w-[calc(100vw+2px)] h-full transition-all duration-300" ++ (
-          isPageVisible(pageIdx) ? "" : " pointer-events-none invisible"
-        )}
-        style={transform: getPageTransform(pageIdx)}
-      >
-        {pageFor(~idx=pageIdx)}
-      </div>
-    } else {
-      React.null
-    }
 
   React.useEffect1(() => {
     replaceHistory(Belt.List.get(routes, index)->Belt.Option.getWithDefault("/r/"))
@@ -319,10 +293,38 @@ let make = () => {
   >
     <div className="flex-1 relative overflow-hidden">
       <div id={containerSelector} className="absolute inset-0 overflow-hidden">
-        {renderPage(0)}
-        {renderPage(1)}
-        {renderPage(2)}
-        {renderPage(3)}
+        <div
+          className={"absolute border-slate-400 border-r-1 -right-px top-0 bottom-0 w-[calc(100vw+2px)] h-full transition-all duration-300" ++ (
+            isPageVisible(0) ? "" : " pointer-events-none invisible"
+          )}
+          style={transform: getPageTransform(0)}
+        >
+          {pageFor(~idx=0)}
+        </div>
+        <div
+          className={"absolute border-slate-400 border-r-1 -right-px top-0 bottom-0 w-[calc(100vw+2px)] h-full transition-all duration-300" ++ (
+            isPageVisible(1) ? "" : " pointer-events-none invisible"
+          )}
+          style={transform: getPageTransform(1)}
+        >
+          {pageFor(~idx=1)}
+        </div>
+        <div
+          className={"absolute border-slate-400 border-r-1 -right-px top-0 bottom-0 w-[calc(100vw+2px)] h-full transition-all duration-300" ++ (
+            isPageVisible(2) ? "" : " pointer-events-none invisible"
+          )}
+          style={transform: getPageTransform(2)}
+        >
+          {pageFor(~idx=2)}
+        </div>
+        <div
+          className={"absolute border-slate-400 border-r-1 -right-px top-0 bottom-0 w-[calc(100vw+2px)] h-full transition-all duration-300" ++ (
+            isPageVisible(3) ? "" : " pointer-events-none invisible"
+          )}
+          style={transform: getPageTransform(3)}
+        >
+          {pageFor(~idx=3)}
+        </div>
       </div>
     </div>
 
