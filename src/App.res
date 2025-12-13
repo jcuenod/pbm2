@@ -51,12 +51,13 @@ let make = () => {
 
           // Set default modules if none are selected (first load)
           if selectedModuleIds->Array.length == 0 {
-            let defaultAbbreviations = ["BHSA", "NET", "NA1904", "CAFE", "APF"]
+            let defaultAbbreviations = ["BHSA", "NA1904", "NET", "CAFE", "APF"]
             let defaultIds = defaultAbbreviations->Array.filterMap(abbr => {
               modules->Array.find(m => m.abbreviation == abbr)->Belt.Option.map(m => m.moduleId)
             })
             if defaultIds->Array.length > 0 {
               setSelectedModuleIds(_ => defaultIds)
+              setBaseModuleId(_ => Some(2)) // Default to NET
             }
           }
         }
