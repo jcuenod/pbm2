@@ -15,6 +15,9 @@ type featuresData = {
   values: array<featureValueDef>,
 }
 
+let mostGeneralCorpus = "none"
+let mostGeneralSyntax = "parallel"
+
 @module("./assets/features.json")
 external featuresData: featuresData = "default"
 
@@ -627,7 +630,90 @@ let make = (
         <div className="text-center py-8 text-red-600 dark:text-red-400">
           {React.string(`Error: ${err}`)}
         </div>
-      | (false, None, Some(results)) => {
+      | (false, None, Some(results)) => if results.count == 0 {
+          let resetSyntax = () => setSyntaxRange(_ => mostGeneralSyntax)
+          let resetCorpus = () => setCorpusFilter(_ => mostGeneralCorpus)
+
+          corpusFilter->Console.log
+          syntaxRange->Console.log
+
+          <div className="text-center py-8 text-gray-500">
+            <div className="mb-2">
+              {React.string(
+                `${searchTerms->Array.length->Int.toString} search terms · no results`,
+              )}
+            </div>
+            <div className="mb-4 text-sm text-stone-600 dark:text-stone-400">
+              {React.string("There are no results matching your search criteria.")}
+            </div>
+
+            <div className="inline-flex flex-col sm:flex-row items-center gap-3 justify-center">
+              <div
+                className={"flex items-center gap-2 px-3 py-2 border rounded-lg bg-stone-50 dark:bg-stone-800" ++ (
+                  if corpusFilter == mostGeneralCorpus {
+                    " hidden"
+                  } else {
+                    ""
+                  }
+                )}
+              >
+                <div className="text-sm text-stone-600 dark:text-stone-300">
+                  {React.string("Corpus:")}
+                </div>
+                <div className="text-sm font-medium text-stone-900 dark:text-stone-100">
+                  {React.string(
+                    switch corpusFilter {
+                    | "ot" => "Old Testament"
+                    | "nt" => "New Testament"
+                    | "bible" => "Whole Bible"
+                    | "current" =>
+                      currentBook->Option.map(b => b.name)->Option.getOr("Current Book")
+                    | _ => "No Filter"
+                    },
+                  )}
+                </div>
+                <button
+                  className="ml-2 text-sm text-teal-600 hover:underline"
+                  onClick={_ => resetCorpus()}
+                >
+                  {React.string("Reset")}
+                </button>
+              </div>
+
+              <div
+                className={"flex items-center gap-2 px-3 py-2 border rounded-lg bg-stone-50 dark:bg-stone-800" ++ (
+                  if syntaxRange == mostGeneralSyntax {
+                    " hidden"
+                  } else {
+                    ""
+                  }
+                )}
+              >
+                <div className="text-sm text-stone-600 dark:text-stone-300">
+                  {React.string("Syntax:")}
+                </div>
+                <div className="text-sm font-medium text-stone-900 dark:text-stone-100">
+                  {React.string(
+                    switch syntaxRange {
+                    | "parallel" => "Parallel"
+                    | "verse" => "Verse"
+                    | "sentence" => "Sentence"
+                    | "clause" => "Clause"
+                    | "phrase" => "Phrase"
+                    | _ => syntaxRange
+                    },
+                  )}
+                </div>
+                <button
+                  className="ml-2 text-sm text-teal-600 hover:underline"
+                  onClick={_ => resetSyntax()}
+                >
+                  {React.string("Reset")}
+                </button>
+              </div>
+            </div>
+          </div>
+        } else {
           let highlightPairs = results.matchingWords->Array.map(mw => (mw.wid, mw.moduleId))
 
           let groupedRows = results.matchingText->Array.reduce([], (acc, row) => {
