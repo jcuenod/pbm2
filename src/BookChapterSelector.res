@@ -222,7 +222,7 @@ let make = (~isOpen, ~onClose, ~currentBook, ~currentChapter, ~onSelect) => {
                   onTouchStart={handleTouchStart}
                   onTouchEnd={e => handleTouchEnd(() => handleBookClick(book.id), e)}
                   // 2. Button is set to relative and h-full. 
-                  className={"relative h-full w-full group focus:outline-none transition-transform active:scale-95 " ++ 
+                  className={"relative h-full min-h-[2.25rem] w-full group focus:outline-none transition-transform active:scale-95 " ++ 
                     (isExpanded ? "z-10" : "z-0")
                   }
                 >
