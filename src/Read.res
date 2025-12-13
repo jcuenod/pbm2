@@ -314,12 +314,18 @@ let make = (
     if currentChapters->Array.length > 0 && !isInitialLoadRef.current {
       switch (currentChapters[0], currentChapters[currentChapters->Array.length - 1]) {
       | (Some(firstChapter), Some(lastChapter)) => {
+          let bookHasPrologue =
+            BibleData.books
+            ->Array.find(b => b.id == currentBookRef.current)
+            ->Option.map(b => b.hasPrologue)
+            ->Option.getOr(Some(false))->Option.getOr(false)
+          let minChapter = if bookHasPrologue { 0 } else { 1 }
           // Load previous
           if (
             scrollTop < 2000 &&
             !loadingPrevRef.current &&
             !prevLoadFailed &&
-            firstChapter.chapter > 1
+            firstChapter.chapter > minChapter
           ) {
             setLoadingPrev(_ => true)
             loadingPrevRef.current = true
