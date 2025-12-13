@@ -160,7 +160,7 @@ let make = (~isOpen, ~onClose, ~currentBook, ~currentChapter, ~onSelect) => {
       </div>
 
       // Scrollable content area
-      <div className="flex-1 overflow-auto p-4">
+      <div className="flex-1 overflow-auto px-4 pt-4 pb-[50vh]">
         {bookRows
         ->Array.mapWithIndex((row, rowIndex) => {
           let firstBook = row->Array.get(0)
