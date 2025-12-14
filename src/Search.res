@@ -103,7 +103,7 @@ let make = (
   let (isAtScrollEnd, setIsAtScrollEnd) = React.useState(() => false)
   let (isScrollable, setIsScrollable) = React.useState(() => false)
 
-  let (collapsed, _, handleScroll) = Hooks.useCollapsibleHeader()
+  let (collapsed, setCollapsed, handleScroll) = Hooks.useCollapsibleHeader()
 
   // Search settings
   let (showSettingsDialog, setShowSettingsDialog) = React.useState(() => false)
@@ -272,10 +272,11 @@ let make = (
       ()
     }
 
-  React.useEffect2(() => {
+  React.useEffect1(() => {
     setCurrentPage(_ => 0)
+    setCollapsed(_ => false)
     None
-  }, (searchTerms, selectedModuleIds))
+  }, searchTerms)
 
   let corpusFilterReference = switch corpusFilter {
   | "ot" => Some("Gen-Mal")
@@ -487,20 +488,37 @@ let make = (
     <div className="p-4 border-b border-gray-200 dark:border-stone-800">
       <div className="flex items-center justify-between mb-2">
         <h1 className="text-2xl font-bold"> {React.string("Search Results")} </h1>
-        <button
-          className="p-2 rounded-full hover:bg-stone-100 dark:hover:bg-stone-800 text-stone-500 dark:text-stone-400 transition-colors"
-          onClick={_ => setShowSettingsDialog(_ => true)}
-          ariaLabel="Search settings"
-        >
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth="2"
-              d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"
-            />
-          </svg>
-        </button>
+        <div>
+          {collapsed
+            ? <button
+                className="p-2 rounded-full hover:bg-stone-100 dark:hover:bg-stone-800 text-stone-500 dark:text-stone-400 transition-colors"
+                onClick={_ => {
+                  setCollapsed(_ => false)
+                }}
+                ariaLabel="Expand search results header"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"
+                  />
+                </svg>
+              </button>
+            : React.null}
+          <button
+            className="p-2 rounded-full hover:bg-stone-100 dark:hover:bg-stone-800 text-stone-500 dark:text-stone-400 transition-colors"
+            onClick={_ => setShowSettingsDialog(_ => true)}
+            ariaLabel="Search settings"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"
+              />
+            </svg>
+          </button>
+        </div>
       </div>
       {searchTerms->Array.length > 0
         ? <div className="space-y-4">
@@ -630,7 +648,8 @@ let make = (
         <div className="text-center py-8 text-red-600 dark:text-red-400">
           {React.string(`Error: ${err}`)}
         </div>
-      | (false, None, Some(results)) => if results.count == 0 {
+      | (false, None, Some(results)) =>
+        if results.count == 0 {
           let resetSyntax = () => setSyntaxRange(_ => mostGeneralSyntax)
           let resetCorpus = () => setCorpusFilter(_ => mostGeneralCorpus)
 
@@ -649,13 +668,13 @@ let make = (
 
             <div className="inline-flex flex-col sm:flex-row items-center gap-3 justify-center">
               <div
-                className={"flex items-center gap-2 px-3 py-2 border rounded-lg bg-stone-50 dark:bg-stone-800" ++ (
-                  if corpusFilter == mostGeneralCorpus {
-                    " hidden"
-                  } else {
-                    ""
-                  }
-                )}
+                className={"flex items-center gap-2 px-3 py-2 border rounded-lg bg-stone-50 dark:bg-stone-800" ++ if (
+                  corpusFilter == mostGeneralCorpus
+                ) {
+                  " hidden"
+                } else {
+                  ""
+                }}
               >
                 <div className="text-sm text-stone-600 dark:text-stone-300">
                   {React.string("Corpus:")}
@@ -681,13 +700,13 @@ let make = (
               </div>
 
               <div
-                className={"flex items-center gap-2 px-3 py-2 border rounded-lg bg-stone-50 dark:bg-stone-800" ++ (
-                  if syntaxRange == mostGeneralSyntax {
-                    " hidden"
-                  } else {
-                    ""
-                  }
-                )}
+                className={"flex items-center gap-2 px-3 py-2 border rounded-lg bg-stone-50 dark:bg-stone-800" ++ if (
+                  syntaxRange == mostGeneralSyntax
+                ) {
+                  " hidden"
+                } else {
+                  ""
+                }}
               >
                 <div className="text-sm text-stone-600 dark:text-stone-300">
                   {React.string("Syntax:")}
