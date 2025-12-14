@@ -398,12 +398,12 @@ let make = (
 
               // FAB Button
               <div
-                className="fab-container fixed bottom-[1rem] right-6 flex flex-col items-end gap-0"
+                className="fab-container fixed bottom-[1rem] right-6 flex flex-col items-end gap-0 pointer-events-none"
               >
                 // Backdrop overlay when menu is open (semi-transparent, click to close)
                 <div
                   className={"fixed inset-0 transition-opacity duration-120 bg-black/40 dark:bg-black/50 z-10 " ++ (
-                    showMenu ? "opacity-100" : "opacity-0 pointer-events-none"
+                    showMenu ? "pointer-events-auto" : "opacity-0"
                   )}
                   role="presentation"
                   ariaHidden={true}
@@ -412,7 +412,7 @@ let make = (
                 // Menu with arrow
                 <div
                   className={"relative w-[80vw] transition-all duration-120 mb-3 z-30 " ++ (
-                    showMenu ? "" : "-translate-y-3 opacity-0 pointer-events-none"
+                    showMenu ? "pointer-events-auto" : "-translate-y-3 opacity-0"
                   )}
                 >
                   <div
@@ -491,7 +491,7 @@ let make = (
                       setSelectedAttributes(_ => [])
                     }
                   }}
-                  className="w-14 h-14 bg-teal-600 hover:bg-teal-700 text-white rounded-full shadow-lg flex items-center justify-center transition-all transform hover:scale-110 z-40 relative"
+                  className="w-14 h-14 bg-teal-600 hover:bg-teal-700 text-white rounded-full shadow-lg flex items-center justify-center transition-all transform hover:scale-110 z-40 relative pointer-events-auto"
                   title="Search"
                 >
                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
