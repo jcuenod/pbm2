@@ -653,9 +653,6 @@ let make = (
           let resetSyntax = () => setSyntaxRange(_ => mostGeneralSyntax)
           let resetCorpus = () => setCorpusFilter(_ => mostGeneralCorpus)
 
-          corpusFilter->Console.log
-          syntaxRange->Console.log
-
           <div className="text-center py-8 text-gray-500">
             <div className="mb-2">
               {React.string(
