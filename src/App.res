@@ -3,6 +3,10 @@ external getPath: unit => string = "getPath"
 @module("./jsHelpers.js")
 external replaceHistory: string => unit = "replaceHistory"
 @module("./jsHelpers.js")
+external pushHistory: string => unit = "pushHistory"
+@module("./jsHelpers.js")
+external attachPopStateListener: (JSON.t => unit) => (unit => unit) = "attachPopStateListener"
+@module("./jsHelpers.js")
 external setHtmlDark: bool => unit = "setHtmlDark"
 
 let routes = Belt.List.fromArray(["/r/", "/g/", "/q/", "/a/"])
@@ -284,9 +288,29 @@ let make = () => {
   }
 
   React.useEffect1(() => {
-    replaceHistory(Belt.List.get(routes, index)->Belt.Option.getWithDefault("/r/"))
+    // Push a new history entry for this navigation. We use pushHistory so
+    // the browser keeps a proper back/forward stack.
+    pushHistory(Belt.List.get(routes, index)->Belt.Option.getWithDefault("/r/"))
     None
   }, [index])
+
+  // Keep track of whether the next popstate should be treated as programmatic
+  // navigation (to avoid re-pushing history). Similar pattern to other
+  // `useRef` flags in the codebase.
+  let handlingPopRef = React.useRef(false)
+
+  // Update index when the user navigates via browser back/forward.
+  React.useEffect0(() => {
+    let cleanup = attachPopStateListener(_event => {
+      // Prevent pushing history while handling this event
+      handlingPopRef.current = true
+      let path = getPath()
+      setIndex(_ => getIndexFromPath(path))
+      // small delay before allowing pushes again
+      let _ = setTimeout(() => handlingPopRef.current = false, 50)
+    })
+    Some(() => cleanup())
+  })
 
   <div
     className="h-screen w-screen flex flex-col bg-white dark:bg-black text-black dark:text-white"

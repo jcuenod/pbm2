@@ -54,6 +54,22 @@ export function replaceHistory(path) {
   }
 }
 
+export function pushHistory(path) {
+  if (typeof history !== 'undefined' && history.pushState) {
+    const fullPath = BASE_URL === '/' ? path : BASE_URL.slice(0, -1) + path
+    history.pushState(null, '', fullPath)
+  }
+}
+
+// Attach a popstate listener. `cb` will be called with the event object.
+// Returns a cleanup function to remove the listener.
+export function attachPopStateListener(cb) {
+  if (typeof window === 'undefined' || !window.addEventListener) return () => {}
+  const handler = (e) => { try { cb(e) } catch (err) {} }
+  window.addEventListener('popstate', handler)
+  return () => window.removeEventListener('popstate', handler)
+}
+
 export function getScrollTop(e) {
   try {
     return e.currentTarget ? e.currentTarget.scrollTop : 0
