@@ -1,4 +1,5 @@
 // API types based on parabible-server-2 /api/v2/text endpoint
+let base_url = "https://dev.parabible.com/api/v2"
 
 type word = {
   wid: int,
@@ -72,7 +73,7 @@ type dictionaryEntriesResponse = {
 // Fetch available modules from the Parabible API
 let fetchModules = async (): result<array<moduleInfo>, string> => {
   try {
-    let url = `https://dev.parabible.com/api/v2/module`
+    let url = `${base_url}/module`
     let response = await Webapi.Fetch.fetch(url)
 
     if response->Webapi.Fetch.Response.ok {
@@ -122,7 +123,7 @@ let fetchModules = async (): result<array<moduleInfo>, string> => {
 // Fetch text from the Parabible API
 let fetchText = async (modules: string, reference: string): result<textEndpointResult, string> => {
   try {
-    let url = `https://dev.parabible.com/api/v2/text?modules=${modules}&reference=${reference}`
+    let url = `${base_url}/text?modules=${modules}&reference=${reference}`
     let response = await Webapi.Fetch.fetch(url)
 
     if response->Webapi.Fetch.Response.ok {
@@ -220,7 +221,7 @@ let fetchText = async (modules: string, reference: string): result<textEndpointR
 // Fetch word details from the Parabible API
 let fetchWordDetails = async (wid: int, moduleId: int): result<array<wordAttribute>, string> => {
   try {
-    let url = `https://dev.parabible.com/api/v2/word?wid=${wid->Int.toString}&moduleId=${moduleId->Int.toString}`
+    let url = `${base_url}/word?wid=${wid->Int.toString}&moduleId=${moduleId->Int.toString}`
     let response = await Webapi.Fetch.fetch(url)
 
     if response->Webapi.Fetch.Response.ok {
@@ -294,7 +295,7 @@ let fetchTermSearch = async (
     | None => ""
     }
 
-    let url = `https://dev.parabible.com/api/v2/termSearch?${termParams}&modules=${modules}&treeNodeType=${treeNodeType}${refParam}&pageSize=${pageSize->Int.toString}&page=${pageNumber->Int.toString}`
+    let url = `${base_url}/termSearch?${termParams}&modules=${modules}&treeNodeType=${treeNodeType}${refParam}&pageSize=${pageSize->Int.toString}&page=${pageNumber->Int.toString}`
 
     let response = await Webapi.Fetch.fetch(url)
 
