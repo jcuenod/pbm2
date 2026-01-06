@@ -3,6 +3,7 @@ let useCollapsibleHeader = (~disabled=?) => {
   let (collapsed, setCollapsed) = React.useState(() => false)
   let lastY = React.useRef(0)
   let accumulatedDy = React.useRef(0)
+  let lastToggleTime = React.useRef(Date.now())
 
   let onScroll = (e) => {
     let target = e->JsxEvent.UI.target
@@ -25,12 +26,17 @@ let useCollapsibleHeader = (~disabled=?) => {
         accumulatedDy.current = accumulatedDy.current + dy
       }
 
-      if accumulatedDy.current > 50 {
-        setCollapsed(_ => true)
-        accumulatedDy.current = 0
-      } else if accumulatedDy.current < -50 {
-        setCollapsed(_ => false)
-        accumulatedDy.current = 0
+      let now = Date.now()
+      if now -. lastToggleTime.current > 1000.0 {
+        if accumulatedDy.current > 50 {
+          setCollapsed(_ => true)
+          accumulatedDy.current = 0
+          lastToggleTime.current = now
+        } else if accumulatedDy.current < -50 {
+          setCollapsed(_ => false)
+          accumulatedDy.current = 0
+          lastToggleTime.current = now
+        }
       }
     } else {
       accumulatedDy.current = 0
