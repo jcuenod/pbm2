@@ -15,7 +15,7 @@ let make = (
 
   let (isRtl, fontClass, sizeClass) = switch moduleAbbrev {
   | "BHSA" => (true, "font-['SBL_BibLit']", "text-2xl")
-  | "APF" | "LXXR" | "NA1904" => (false, "font-['SBL_BibLit']", "text-lg")
+  | "APF" | "LXXR" | "NA1904" | "SBLGNT" => (false, "font-['SBL_BibLit']", "text-lg")
   | _ => (false, "", "text-md")
   }
 
