@@ -53,6 +53,8 @@ module SortableItem = {
 }
 
 let stopPointerPropagation = event => event->ReactEvent.Pointer.stopPropagation
+let stopTouchPropagation = event => event->ReactEvent.Touch.stopPropagation
+let stopMousePropagation = event => event->ReactEvent.Mouse.stopPropagation
 
 @react.component
 let make = (~availableModules, ~selectedModuleIds, ~onModuleToggle, ~onReorder, ~onBack, ~baseModuleId, ~onBaseModuleChange) => {
@@ -128,6 +130,8 @@ let make = (~availableModules, ~selectedModuleIds, ~onModuleToggle, ~onReorder, 
       <span className="flex-1 font-medium"> {React.string(module_.abbreviation)} </span>
       <button
         onPointerDown={stopPointerPropagation}
+        onTouchStart={stopTouchPropagation}
+        onMouseDown={stopMousePropagation}
         onClick={_ => onBaseModuleChange(module_.moduleId)}
         className={"p-1 rounded transition-colors " ++ (
           baseModuleId == Some(module_.moduleId)
@@ -148,6 +152,8 @@ let make = (~availableModules, ~selectedModuleIds, ~onModuleToggle, ~onReorder, 
       </button>
       <button
         onPointerDown={stopPointerPropagation}
+        onTouchStart={stopTouchPropagation}
+        onMouseDown={stopMousePropagation}
         onClick={_ => onModuleToggle(module_.moduleId)}
         className="p-1 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
         ariaLabel="Remove"
