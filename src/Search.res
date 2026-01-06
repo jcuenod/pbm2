@@ -679,12 +679,13 @@ let make = (
                 <div className="text-sm font-medium text-stone-900 dark:text-stone-100">
                   {React.string(
                     switch corpusFilter {
+                    | "none" => "No Filter"
                     | "ot" => "Old Testament"
                     | "nt" => "New Testament"
                     | "bible" => "Whole Bible"
                     | "current" =>
                       currentBook->Option.map(b => b.name)->Option.getOr("Current Book")
-                    | _ => "No Filter"
+                    | _ => `Unknown Filter (${corpusFilter})`
                     },
                   )}
                 </div>
